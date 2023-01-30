@@ -1,0 +1,78 @@
+{
+  "name": "@fastly/serve-vercel-build-output",
+  "version": "0.4.0-beta.0",
+  "description": "Serve Vercel Build Output (v3) on Fastly Compute@Edge",
+  "main": "./dist/server/index.js",
+  "types": "./dist/server/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "prepack": "npm run build",
+    "clean": "rimraf dist",
+    "build": "npm run test && npm run clean && npm run build-server && npm run build-node",
+    "build-server": "npm run build-server:compile",
+    "build-server:compile": "tsc --build tsconfig.server.json",
+    "build-node": "npm run build-node:compile && npm run build-node:copy-package-json",
+    "build-node:compile": "tsc --build tsconfig.node.json",
+    "build-node:copy-package-json": "cp src/node/package.json dist/node/package.json",
+    "test": "npm run test-server",
+    "test-server": "c8 mocha -n no-warnings=86652 -n loader=ts-node/esm --extension ts --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
+  },
+  "bin": {
+    "transform": "./dist/node/cli/transform.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fastly/serve-vercel-build-output.git"
+  },
+  "keywords": [
+    "vercel",
+    "nextjs",
+    "compute",
+    "fastly"
+  ],
+  "author": "Katsuyuki Omuro <komuro@fastly.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fastly/serve-vercel-build-output/issues"
+  },
+  "homepage": "https://github.com/fastly/serve-vercel-build-output#readme",
+  "dependencies": {
+    "@fastly/compute-js-static-publish": "^5.0.0",
+    "@fastly/js-compute": "^2.0.0",
+    "@vercel/routing-utils": "^2.1.8",
+    "cookie": "^0.5.0",
+    "dot": "^1.1.3",
+    "file-uri-to-path": "^2.0.0",
+    "path-browserify": "^1.0.1",
+    "pcre-to-regexp": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/assert": "^1.5.6",
+    "@types/cookie": "^0.5.1",
+    "@types/dot": "^1.1.5",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^18.11.19",
+    "@types/path-browserify": "^1.0.0",
+    "@types/sinon": "^10.0.13",
+    "assert": "^2.0.0",
+    "c8": "^7.13.0",
+    "mocha": "^10.2.0",
+    "rimraf": "^4.1.2",
+    "sinon": "^15.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4",
+    "webpack": "^5.82.0"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.ts.map",
+    "dist/**/*.d.ts",
+    "dist/**/package.json",
+    "resources/**/*",
+    "polyfills.js",
+    "LICENSE",
+    "README.md",
+    "SECURITY.md"
+  ]
+}

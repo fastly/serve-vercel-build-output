@@ -1,0 +1,1042 @@
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "/null-httpbin",
+      "dest": "https://httpbin.org/anything"
+    },
+    {
+      "src": "/null-httpbin2",
+      "dest": "/null-httpbin3?x=1",
+      "headers": {
+        "foo": "bar"
+      }
+    },
+    {
+      "src": "/null-httpbin3",
+      "dest": "/null-httpbin4?x=1&y=2"
+    },
+    {
+      "src": "/null-httpbin4",
+      "dest": "https://httpbin.org/anything"
+    },
+    {
+      "src": "/null-httpbin2a",
+      "dest": "/null-httpbin3a?x=1",
+      "headers": {
+        "foo": "bar"
+      },
+      "continue": true
+    },
+    {
+      "src": "/null-httpbin3a",
+      "dest": "/null-httpbin4a?x=1&y=2",
+      "continue": true
+    },
+    {
+      "src": "/null-httpbin4a",
+      "dest": "https://httpbin.org/anything"
+    },
+    {
+      "src": "/secret1",
+      "status": 404
+    },
+    {
+      "src": "/secret1",
+      "headers": {
+        "you-did": "404-secret-1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/secret2",
+      "status": 404,
+      "continue": true
+    },
+    {
+      "src": "/secret2",
+      "headers": {
+        "you-did": "404-secret-2"
+      },
+      "continue": true
+    },
+    {
+      "src": "/secret3",
+      "headers": {
+        "you-did": "404-secret-3"
+      },
+      "continue": true
+    },
+    {
+      "src": "/secret3",
+      "dest": "/abba.html",
+      "status": 404,
+      "continue": true
+    },
+    {
+      "src": "/abba.html",
+      "headers": {
+        "x-abba": "yes"
+      },
+      "continue": true
+    },
+    {
+      "src": "/1-a.html",
+      "headers": {
+        "1-a-null": "1"
+      }
+    },
+    {
+      "src": "/2-a.html",
+      "headers": {
+        "2-a-null": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/3-a.html",
+      "headers": {
+        "3-a-null": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/3-a.html",
+      "dest": "/3-b.html"
+    },
+    {
+      "src": "/4-a.html",
+      "headers": {
+        "4-a-null": "1"
+      },
+      "dest": "/4-b.html"
+    },
+    {
+      "src": "/5-a.html",
+      "headers": {
+        "5-a-null": "1"
+      },
+      "dest": "/5-b.html",
+      "check": true
+    },
+    {
+      "src": "/6-a.html",
+      "headers": {
+        "6-a-null": "1"
+      },
+      "dest": "/6-b.html"
+    },
+    {
+      "src": "/7-a.html",
+      "headers": {
+        "7-a-null": "1"
+      },
+      "dest": "/7-b.html",
+      "check": true
+    },
+    {
+      "src": "/8-an.html",
+      "dest": "/8-b.html"
+    },
+    {
+      "src": "/8-en.html",
+      "dest": "/8-e.html"
+    },
+    {
+      "src": "/8-anc.html",
+      "dest": "/8-b.html",
+      "check": true
+    },
+    {
+      "src": "/8-enc.html",
+      "dest": "/8-e.html",
+      "check": true
+    },
+    {
+      "src": "/9-a(b|c|d|g).html",
+      "dest": "/9-$1.html"
+    },
+    {
+      "src": "/9-a(b|c|d|g)c.html",
+      "dest": "/9-$1.html",
+      "check": true
+    },
+    {
+      "src": "/11-b.html",
+      "dest": "/11-a.html",
+      "headers": {
+        "11-b-null": "11-a",
+        "11-b": "null"
+      }
+    },
+    {
+      "src": "/12-a.html",
+      "dest": "/12-e.html",
+      "continue": true,
+      "check": true
+    },
+    {
+      "src": "/12-b.html",
+      "dest": "/12-e.html",
+      "continue": true
+    },
+    {
+      "src": "/12-c.html",
+      "dest": "/12-e.html",
+      "check": true
+    },
+    {
+      "src": "/12-d.html",
+      "dest": "/12-e.html"
+    },
+    {
+      "src": "/_12-e.html",
+      "headers": {
+        "x-path": "/12-e.html"
+      }
+    },
+    {
+      "src": "/13-a.html",
+      "dest": "/13-d.html",
+      "check": true
+    },
+    {
+      "src": "/13-b.html",
+      "dest": "/13-d.html"
+    },
+    {
+      "src": "/13-c.html",
+      "dest": "/13-d.html"
+    },
+    {
+      "src": "/14-a.html",
+      "dest": "/14-c.html",
+      "check": true
+    },
+    {
+      "src": "/14-b.html",
+      "dest": "/14-c.html"
+    },
+    {
+      "src": "/14-d.html",
+      "dest": "/14-f.html",
+      "check": true
+    },
+    {
+      "src": "/14-e.html",
+      "dest": "/14-f.html"
+    },
+    {
+      "src": "/15-b.html",
+      "dest": "/15-c.html"
+    },
+    {
+      "src": "/15-d.html",
+      "dest": "/15-c.html",
+      "check": true
+    },
+    {
+      "src": "/15-e.html",
+      "dest": "/15-b.html"
+    },
+    {
+      "src": "/15-f.html",
+      "dest": "/15-b.html",
+      "check": true
+    },
+    {
+      "src": "/15-g.html",
+      "dest": "/15-d.html"
+    },
+    {
+      "src": "/15-h.html",
+      "dest": "/15-d.html",
+      "check": true
+    },
+    {
+      "src": "/15-i.html",
+      "dest": "/15-c.html"
+    },
+    {
+      "src": "/16-a.html",
+      "dest": "/16-c.html"
+    },
+    {
+      "src": "/16-b.html",
+      "dest": "/16-c.html",
+      "continue": true
+    },
+    {
+      "src": "/16-c.html",
+      "dest": "/16-d.html"
+    },
+    {
+      "src": "/16-e.html",
+      "dest": "/16-c.html"
+    },
+    {
+      "src": "/16-f.html",
+      "dest": "/16-c.html",
+      "continue": true
+    },
+    {
+      "src": "/16-g.html",
+      "dest": "/16-c.html"
+    },
+    {
+      "src": "/16-h.html",
+      "dest": "/16-j.html",
+      "continue": true
+    },
+    {
+      "src": "/16-i.html",
+      "dest": "/16-j.html"
+    },
+    {
+      "src": "/17-a.html",
+      "dest": "/17-d.html"
+    },
+    {
+      "src": "/17-b.html",
+      "dest": "/17-d.html",
+      "continue": true
+    },
+    {
+      "src": "/17-c.html",
+      "dest": "/17-d.html",
+      "check": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/null-httpbin2",
+      "dest": "/null-httpbin3?x=1234",
+      "headers": {
+        "foo2": "barfilesystem"
+      }
+    },
+    {
+      "src": "/null-httpbin3",
+      "dest": "/15-a.html",
+      "headers": {
+        "foo2": "bazfilesystem"
+      }
+    },
+    {
+      "src": "/4-a.html",
+      "dest": "/4-c.html"
+    },
+    {
+      "src": "/4-b.html",
+      "dest": "/4-e.html",
+      "headers": {
+        "4-b-filesystem": "1"
+      }
+    },
+    {
+      "src": "/5-a.html",
+      "dest": "/5-c.html"
+    },
+    {
+      "src": "/5-b.html",
+      "dest": "/5-e.html",
+      "headers": {
+        "5-b-filesystem": "1"
+      }
+    },
+    {
+      "src": "/6-a.html",
+      "dest": "/6-c.html"
+    },
+    {
+      "src": "/6-b.html",
+      "dest": "/6-e.html",
+      "headers": {
+        "6-b-filesystem": "1"
+      }
+    },
+    {
+      "src": "/7-a.html",
+      "dest": "/7-c.html"
+    },
+    {
+      "src": "/7-b.html",
+      "dest": "/7-e.html",
+      "headers": {
+        "7-b-filesystem": "1"
+      }
+    },
+    {
+      "src": "/8-a.html",
+      "dest": "/8-b.html",
+      "check": true
+    },
+    {
+      "src": "/8-af.html",
+      "dest": "/8-b.html"
+    },
+    {
+      "src": "/8-b.html",
+      "dest": "/8-e.html",
+      "headers": {
+        "8-b-filesystem": "1",
+        "8-b": "filesystem"
+      }
+    },
+    {
+      "src": "/8-f.html",
+      "headers": {
+        "8-f-filesystem": "1"
+      }
+    },
+    {
+      "src": "/9-b.html",
+      "dest": "/9-d.html",
+      "headers": {
+        "9-b-filesystem": "1",
+        "9-b": "filesystem"
+      },
+      "check": true
+    },
+    {
+      "src": "/9-c.html",
+      "dest": "/9-d.html",
+      "headers": {
+        "9-c-filesystem": "1",
+        "9-c": "filesystem"
+      }
+    },
+    {
+      "src": "/9-d.html",
+      "dest": "/9-e.html",
+      "headers": {
+        "9-d-filesystem": "1",
+        "9-d": "filesystem"
+      }
+    },
+    {
+      "src": "/10-a(c|d).html",
+      "dest": "/10-$1.html",
+      "headers": {
+        "10-a$1-filesystem": "1",
+        "10-a$1": "filesystem"
+      }
+    },
+    {
+      "src": "/10-a(c|d)c.html",
+      "dest": "/10-$1.html",
+      "headers": {
+        "10-a$1c-filesystem": "1",
+        "10-a$1c": "filesystem"
+      },
+      "check": true
+    },
+    {
+      "src": "/10-c.html",
+      "dest": "/10-e.html",
+      "headers": {
+        "10-c-filesystem": "1",
+        "10-c": "filesystem"
+      }
+    },
+    {
+      "src": "/10-d.html",
+      "dest": "/10-f.html",
+      "headers": {
+        "10-d-filesystem": "1",
+        "10-d": "filesystem"
+      }
+    },
+    {
+      "src": "/11-c.html",
+      "dest": "/11-a.html",
+      "headers": {
+        "11-c-filesystem": "11-a",
+        "11-c": "filesystem"
+      }
+    },
+    {
+      "src": "/11-d.html",
+      "dest": "/11-f.html",
+      "headers": {
+        "11-d-filesystem": "11-f",
+        "11-d": "filesystem"
+      },
+      "check": true
+    },
+    {
+      "src": "/11-e.html",
+      "dest": "/11-f.html",
+      "headers": {
+        "11-e-filesystem": "11-f",
+        "11-e": "filesystem"
+      }
+    },
+    {
+      "src": "/11-f.html",
+      "dest": "/11-j.html",
+      "headers": {
+        "11-f-filesystem": "11-j",
+        "11-f": "filesystem"
+      }
+    },
+    {
+      "src": "/11-k.html",
+      "dest": "/11-m.html",
+      "headers": {
+        "11-k-filesystem": "11-m",
+        "11-k": "filesystem"
+      },
+      "check": true
+    },
+    {
+      "src": "/11-l.html",
+      "dest": "/11-m.html",
+      "headers": {
+        "11-l-filesystem": "11-m",
+        "11-l": "filesystem"
+      }
+    },
+    {
+      "src": "/11-m.html",
+      "dest": "/11-n.html",
+      "headers": {
+        "11-m-filesystem": "11-n",
+        "11-m": "filesystem"
+      }
+    },
+    {
+      "src": "/11-o.html",
+      "dest": "/11-q.html",
+      "headers": {
+        "11-o-filesystem": "11-q",
+        "11-o": "filesystem"
+      },
+      "check": true
+    },
+    {
+      "src": "/11-p.html",
+      "dest": "/11-q.html",
+      "headers": {
+        "11-p-filesystem": "11-q",
+        "11-p": "filesystem"
+      }
+    },
+    {
+      "src": "/11-q.html",
+      "dest": "/11-a.html",
+      "headers": {
+        "11-q-filesystem": "11-a",
+        "11-q": "filesystem"
+      }
+    },
+    {
+      "src": "/12-a.html",
+      "headers": {
+        "12-filesystem-a": "1"
+      }
+    },
+    {
+      "src": "/12-b.html",
+      "headers": {
+        "12-filesystem-b": "1"
+      }
+    },
+    {
+      "src": "/12-c.html",
+      "headers": {
+        "12-filesystem-c": "1"
+      }
+    },
+    {
+      "src": "/12-d.html",
+      "headers": {
+        "12-filesystem-d": "1"
+      }
+    },
+    {
+      "src": "/12-e.html",
+      "headers": {
+        "12-filesystem-e": "1"
+      }
+    },
+    {
+      "src": "/14-a.html",
+      "dest": "/14-d.html",
+      "headers": {
+        "14-a-filesystem": "14-d",
+        "14-a": "filesystem"
+      }
+    },
+    {
+      "src": "/14-b.html",
+      "dest": "/14-d.html",
+      "headers": {
+        "14-b-filesystem": "14-d",
+        "14-b": "filesystem"
+      }
+    },
+    {
+      "src": "/17-d.html",
+      "dest": "/17-e.html",
+      "headers": {
+        "17-d-filesystem": "17-e",
+        "17-d": "filesystem"
+      }
+    },
+    {
+      "handle": "rewrite"
+    },
+    {
+      "src": "/4-a.html",
+      "dest": "/4-d.html"
+    },
+    {
+      "src": "/4-b.html",
+      "dest": "/4-f.html",
+      "headers": {
+        "4-b-rewrite": "1"
+      }
+    },
+    {
+      "src": "/5-a.html",
+      "dest": "/5-d.html"
+    },
+    {
+      "src": "/5-b.html",
+      "dest": "/5-f.html",
+      "headers": {
+        "5-b-rewrite": "1"
+      }
+    },
+    {
+      "src": "/6-a.html",
+      "dest": "/6-d.html"
+    },
+    {
+      "src": "/6-b.html",
+      "dest": "/6-f.html",
+      "headers": {
+        "6-b-rewrite": "1"
+      }
+    },
+    {
+      "src": "/7-a.html",
+      "dest": "/7-d.html"
+    },
+    {
+      "src": "/7-b.html",
+      "dest": "/7-f.html",
+      "headers": {
+        "7-b-rewrite": "1"
+      }
+    },
+    {
+      "src": "/8-a.html",
+      "dest": "/8-d.html",
+      "headers": {
+        "8-a-rewrite": "1",
+        "8-a": "rewrite"
+      }
+    },
+    {
+      "src": "/8-b.html",
+      "dest": "/8-f.html",
+      "headers": {
+        "8-b-rewrite": "1",
+        "8-b": "rewrite"
+      }
+    },
+    {
+      "src": "/9-d.html",
+      "dest": "/9-f.html",
+      "headers": {
+        "9-d-rewrite": "1",
+        "9-d": "rewrite"
+      }
+    },
+    {
+      "src": "/9-g.html",
+      "dest": "/9-f.html",
+      "headers": {
+        "9-g-rewrite": "9-f",
+        "9-g": "rewrite"
+      }
+    },
+    {
+      "src": "/10-c.html",
+      "dest": "/10-g.html",
+      "headers": {
+        "10-c-rewrite": "1",
+        "10-c": "rewrite"
+      }
+    },
+    {
+      "src": "/10-d.html",
+      "dest": "/10-h.html",
+      "headers": {
+        "10-d-rewrite": "1",
+        "10-d": "rewrite"
+      }
+    },
+    {
+      "src": "/11-h.html",
+      "dest": "/11-i.html",
+      "headers": {
+        "11-h-rewrite": "11-i",
+        "11-h": "rewrite"
+      }
+    },
+    {
+      "src": "/11-f.html",
+      "dest": "/11-g.html",
+      "headers": {
+        "11-f-rewrite": "11-g",
+        "11-f": "rewrite"
+      }
+    },
+    {
+      "src": "/11-m.html",
+      "dest": "/11-a.html",
+      "headers": {
+        "11-m-rewrite": "11-a",
+        "11-m": "rewrite"
+      }
+    },
+    {
+      "src": "/11-q.html",
+      "dest": "/11-r.html",
+      "headers": {
+        "11-q-rewrite": "11-r",
+        "11-q": "rewrite"
+      }
+    },
+    {
+      "src": "/11-s.html",
+      "dest": "/11-r.html",
+      "headers": {
+        "11-s-rewrite": "11-r",
+        "11-s": "rewrite"
+      }
+    },
+    {
+      "src": "/14-a.html",
+      "dest": "/14-e.html",
+      "headers": {
+        "14-a-rewrite": "14-e",
+        "14-a": "rewrite"
+      }
+    },
+    {
+      "src": "/14-b.html",
+      "dest": "/14-e.html",
+      "headers": {
+        "14-b-rewrite": "14-e",
+        "14-b": "rewrite"
+      }
+    },
+    {
+      "src": "/14-f.html",
+      "dest": "/14-g.html",
+      "headers": {
+        "14-f-rewrite": "14-g",
+        "14-f": "rewrite"
+      }
+    },
+    {
+      "src": "/15-a.html",
+      "dest": "/15-b.html"
+    },
+    {
+      "src": "/17-d.html",
+      "dest": "/17-f.html",
+      "headers": {
+        "17-d-rewrite": "17-f",
+        "17-d": "rewrite"
+      }
+    },
+    {
+      "handle": "hit"
+    },
+    {
+      "src": "/15-a.html",
+      "headers": {
+        "hit-15-a": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-b.html",
+      "headers": {
+        "hit-15-b": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-c.html",
+      "headers": {
+        "hit-15-c": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-d.html",
+      "headers": {
+        "hit-15-d": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "(/.*)",
+      "headers": {
+        "x-hit-path": "$1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/404.html",
+      "headers": {
+        "hit": "404"
+      },
+      "continue": true
+    },
+    {
+      "handle": "miss"
+    },
+    {
+      "src": "/15-a.html",
+      "headers": {
+        "miss-15-a": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-b.html",
+      "headers": {
+        "miss-15-b": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-c.html",
+      "headers": {
+        "miss-15-c": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-d.html",
+      "headers": {
+        "miss-15-d": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-e.html",
+      "headers": {
+        "miss-15-e": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-f.html",
+      "headers": {
+        "miss-15-f": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-g.html",
+      "headers": {
+        "miss-15-g": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-h.html",
+      "headers": {
+        "miss-15-h": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/15-i.html",
+      "headers": {
+        "miss-15-i": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-a.html",
+      "headers": {
+        "miss-16-a": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-b.html",
+      "headers": {
+        "miss-16-b": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-c.html",
+      "headers": {
+        "miss-16-c": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-d.html",
+      "headers": {
+        "miss-16-d": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-e.html",
+      "headers": {
+        "miss-16-e": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-f.html",
+      "headers": {
+        "miss-16-f": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-g.html",
+      "headers": {
+        "miss-16-g": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-h.html",
+      "headers": {
+        "miss-16-h": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-i.html",
+      "headers": {
+        "miss-16-i": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/16-j.html",
+      "headers": {
+        "miss-16-j": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-a.html",
+      "headers": {
+        "miss-17-a": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-b.html",
+      "headers": {
+        "miss-17-b": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-c.html",
+      "headers": {
+        "miss-17-c": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-d.html",
+      "headers": {
+        "miss-17-d": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/wtf",
+      "headers": {
+        "miss-wtf": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "(/.*)",
+      "headers": {
+        "x-miss-path": "$1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/toksai",
+      "status": 308,
+      "headers": {
+        "location": "https://www.google.com/"
+      },
+      "continue": true
+    },
+    {
+      "src": "/toksai2",
+      "dest": "/oy",
+      "check": true
+    },
+    {
+      "src": "/toksai3",
+      "status": 308,
+      "headers": {
+        "location": "/moo.html"
+      },
+      "dest": "/moo2.html",
+      "check": true
+    },
+    {
+      "handle": "error"
+    },
+    {
+      "status": 404,
+      "src": "^/.*$",
+      "dest": "/404.html"
+    },
+    {
+      "status": 500,
+      "src": "^/.*$",
+      "dest": "/500.html"
+    },
+    {
+      "handle": "resource"
+    },
+    {
+      "src": "^/rewrites(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      "dest": "https://httpbin.org/anything/$1",
+      "check": true
+    },
+    {
+      "src": "^/rewrites2(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      "dest": "/$1",
+      "check": true
+    },
+    {
+      "src": "/(.*)",
+      "headers": {
+        "x-order": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/.*",
+      "status": 404
+    }
+  ]
+}

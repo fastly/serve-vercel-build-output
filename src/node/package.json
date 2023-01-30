@@ -1,0 +1,4 @@
+{
+  "//note": "We use commonjs here so that webpack.config.js can load the plugin in here",
+  "type": "commonjs"
+}
