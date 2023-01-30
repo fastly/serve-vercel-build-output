@@ -4,3 +4,7 @@
  */
 
 /// <reference types='@fastly/js-compute' />
+
+import VercelBuildOutputServer from './server/VercelBuildOutputServer';
+
+export default VercelBuildOutputServer;
