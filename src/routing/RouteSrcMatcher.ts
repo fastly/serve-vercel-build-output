@@ -6,6 +6,8 @@ export type RegExpAndKeys = {
   keys: string[],
 };
 
+export type RouteSrcMatchResult = ReturnType<typeof RouteSrcMatcher['exec']>;
+
 export function resolveRouteParameters(
   str: string,
   match: string[],
