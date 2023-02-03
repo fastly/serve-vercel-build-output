@@ -1,17 +1,16 @@
 import cookie from 'cookie';
-import { parseQueryString } from "../utils/query";
-
-type Query = Record<string, string[]>;
+import { headersToObject, parseQueryString } from "../utils";
+import { HttpHeadersConfig, Query } from "../types/routing";
 
 export class RouteMatcherCookiesMap extends Map<string, string> {
 
-  private headers: Headers;
+  private readonly headers: HttpHeadersConfig;
 
-  constructor(headers: Headers) {
+  constructor(headers: HttpHeadersConfig) {
     super();
     this.headers = headers;
 
-    const cookieString = this.headers.get('Cookie');
+    const cookieString = this.headers['Cookie'];
     if (cookieString) {
       for (const [key, value] of Object.entries(cookie.parse(cookieString))) {
         super.set(key, value);
@@ -27,12 +26,12 @@ export class RouteMatcherContext {
 
   pathname: string;
 
-  headers: Headers;
+  headers: HttpHeadersConfig;
 
   query: Query;
 
   get host(): string {
-    return this.headers.get('host') ?? '';
+    return this.headers['host'] ?? '';
   }
 
   _cookies: RouteMatcherCookiesMap | undefined;
@@ -46,7 +45,7 @@ export class RouteMatcherContext {
   constructor(request: Request) {
 
     this.method = request.method;
-    this.headers = new Headers(request.headers);
+    this.headers = headersToObject(request.headers);
 
     const url = new URL(request.url);
     this.pathname = url.pathname;

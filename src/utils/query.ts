@@ -1,3 +1,17 @@
+import { HttpHeadersConfig } from "../types/routing";
+
+/**
+ * Converts a Headers object to a dictionary
+ * @param headers { Headers }
+ */
+export function headersToObject(headers: Headers): HttpHeadersConfig {
+  const result: Record<string, string> = {};
+  for (const [key, value] of headers.entries()) {
+    result[key.toLowerCase()] = value;
+  }
+  return result;
+}
+
 /**
  * This function is necessary to account for the difference between
  * `?a=` and `?a` because native `url.parse(str, true)` can't tell.
