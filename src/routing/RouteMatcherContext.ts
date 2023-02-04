@@ -20,6 +20,13 @@ export class RouteMatcherCookiesMap extends Map<string, string> {
 
 }
 
+type RouteMatcherContextInit = {
+  method: string;
+  pathname: string;
+  headers: HttpHeadersConfig;
+  query: Query;
+};
+
 export class RouteMatcherContext {
 
   method: string;
@@ -42,14 +49,37 @@ export class RouteMatcherContext {
     return this._cookies;
   }
 
-  constructor(request: Request) {
+  constructor(init: RouteMatcherContextInit) {
 
-    this.method = request.method;
-    this.headers = headersToObject(request.headers);
+    this.method = init.method;
+    this.headers = init.headers;
+    this.pathname = init.pathname;
+    this.query = init.query;
+    this._cookies = undefined;
+
+  }
+
+  static fromRequest(request: Request) {
 
     const url = new URL(request.url);
-    this.pathname = url.pathname;
-    this.query = parseQueryString(url.search);
+    return new RouteMatcherContext({
+      method: request.method,
+      headers: headersToObject(request.headers),
+      pathname: url.pathname,
+      query: parseQueryString(url.search),
+    });
+
+  }
+
+  static fromUrl(requestUrl: string, method = 'GET') {
+
+    const url = new URL(requestUrl);
+    return new RouteMatcherContext({
+      method,
+      headers: {},
+      pathname: url.pathname,
+      query: parseQueryString(url.search),
+    });
 
   }
 

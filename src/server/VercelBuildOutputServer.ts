@@ -54,7 +54,7 @@ export default class VercelBuildOutputServer {
   ): Promise<Response> {
 
     let phase: HandleValue | null = null;
-    const routeMatcherContext = new RouteMatcherContext(request);
+    const routeMatcherContext = RouteMatcherContext.fromRequest(request);
 
     if (this._assetsCollection != null) {
       return this.invokeAsset(this._assetsCollection.getAsset('api/hello'), request, context);
