@@ -1,11 +1,17 @@
 import { RoutesCollection } from "./RoutesCollection";
 import { RouteMatcherContext } from "./RouteMatcherContext";
-import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
-import { RouteMatchResult } from "../types/routing";
-import { resolveRouteParameters, RouteSrcMatcher, RouteSrcMatchResult } from "./RouteSrcMatcher";
-import { HasFieldEntry } from "../types/server";
+import { HandleValue, isHandler, Route } from "@vercel/routing-utils";
+import { HttpHeadersConfig, PhaseRoutesResult, RouteMatchLogEntry } from "../types/routing";
+import { resolveRouteParameters } from "./RouteSrcMatcher";
+import { matchRoute } from "../utils/routing";
+
+type MiddlewareMatchHandler = () => boolean;
+
+
 
 export default class RouteMatcher {
+
+  _onMiddlewareMatch: MiddlewareMatchHandler | null = null;
 
   _routesCollection: RoutesCollection;
 
@@ -19,94 +25,14 @@ export default class RouteMatcher {
 
   }
 
-  matchRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext): RouteSrcMatchResult | false {
-
-    const { methods, has, missing } = route;
-
-    // methods
-    if (Array.isArray(methods) &&
-      !methods.includes(routeMatcherContext.method)
-    ) {
-      return false;
-    }
-
-    // has
-    if (Array.isArray(has) &&
-      !has.every(hasField => this.matchHasField(hasField, routeMatcherContext))
-    ) {
-      return false;
-    }
-
-    // missing
-    if (Array.isArray(missing) &&
-      missing.some(hasField => this.matchHasField(hasField, routeMatcherContext))
-    ) {
-      return false;
-    }
-
-    const matchResult = RouteSrcMatcher.exec(route, routeMatcherContext.pathname);
-    if (matchResult == null) {
-      return false;
-    }
-
-    return matchResult;
-
-  }
-
-  matchHasField(
-    hasField: HasFieldEntry,
-    context: RouteMatcherContext,
-  ) {
-
-    const { type } = hasField;
-    switch(type) {
-      case 'host':
-        return hasField.value == context.host;
-      case 'cookie': {
-        const { key, value } = hasField;
-        const cookieValue = context.cookies.get(key);
-        if (cookieValue == null) {
-          return false;
-        }
-        if (value == null) {
-          return true;
-        }
-        // TODO: if value is a regex
-        return cookieValue === value;
-      }
-      case 'query': {
-        const { key, value } = hasField;
-        const queryValue = context.query[key];
-        if (queryValue == null) {
-          return false;
-        }
-        if (value == null) {
-          return true;
-        }
-        // TODO: if value is a regex
-        return queryValue.some(v => v === value);
-      }
-      case 'header': {
-        const { key, value } = hasField;
-        const headerValue = context.headers[key];
-        if (headerValue == null) {
-          return false;
-        }
-        if (value == null) {
-          return true;
-        }
-        // TODO: if value is a regex
-        return headerValue === value;
-      }
-
-    }
-
-    return false;
-
-  }
-
-
   checkFilesystem(routeMatcherContext: RouteMatcherContext) {
+
+  }
+
+  async doEdgeFunction(routeMatcherContext: RouteMatcherContext): Promise<Response> {
+
+    // create Request from route matcher context
+    throw "not implemented";
 
   }
 
@@ -117,8 +43,9 @@ export default class RouteMatcher {
     while(true) {
       const results = this.doPhaseRoutes(phase, routeMatcherContext);
 
-      // if result has check
-      if (phase != null && results) {
+      // null phase cannot have check
+      if (phase != null && results.matchedRoute?.check) {
+        // "check" restarts this loop at the rewrite phase.
         phase = 'rewrite';
         continue;
       }
@@ -136,11 +63,11 @@ export default class RouteMatcher {
       // check match
       if (matched) {
 
-        this.doPhaseRoutes('hit', routeMatcherContext);
-        // can't have check
-        // can't have status, can't specify dest
-        // items will all have continue: true
-        if (matched) {
+        const hitResults = this.doPhaseRoutes('hit', routeMatcherContext);
+        if (hitResults.matchedRoute != null) {
+          // items will all have "continue": true
+          // so there will be no matched route.
+          // if there is one then it's unexpected.
           throw "unexpected";
         }
 
@@ -148,14 +75,19 @@ export default class RouteMatcher {
 
       } else {
 
-        this.doPhaseRoutes('miss', routeMatcherContext);
-        // if matches, then it has a dest and check
-        if (matched) {
-          // check for dest and check
-          // throw if not present
+        const missRoutes = this.doPhaseRoutes('miss', routeMatcherContext);
+        if (missRoutes.matchedRoute != null) {
+          // if matches, then it has a dest and check
+          if (
+            missRoutes.matchedRoute.dest != null &&
+            missRoutes.matchedRoute.check
+          ) {
+            // "check" restarts this loop at the rewrite phase.
+            phase = 'rewrite';
+            continue;
+          }
 
-          phase = 'rewrite';
-          continue;
+          throw "unexpected";
         }
 
       }
@@ -182,32 +114,84 @@ export default class RouteMatcher {
 
   }
 
-  doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext) {
+  doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext): PhaseRoutesResult {
 
-    const results: RouteMatchResult[] = [];
+    const matchedEntries: RouteMatchLogEntry[] = [];
+    let matchedRoute: Route | undefined = undefined;
 
     const phaseRoutes = this._routesCollection.getPhaseRoutes(phase);
 
-    for (const [index, route] of phaseRoutes.entries()) {
+    for (const [routeIndex, route] of phaseRoutes.entries()) {
 
       if (isHandler(route)) {
         // We don't expect any Handle, only Source routes
         continue;
       }
 
-      const matchResult = this.matchRoute(route, routeMatcherContext);
-
+      const matchResult = matchRoute(route, routeMatcherContext);
       if (!matchResult) {
         continue;
       }
 
-      if (route.middlewarePath != null) {
-        // apply Edge middleware
-      } else {
-        // apply dest, headers, status
+      const isContinue = route.continue;
 
-        // apply middleware or
-        // apply dest, headers, status
+      let entry: RouteMatchLogEntry = {
+        phase,
+        src: routeMatcherContext.pathname,
+        route,
+        routeIndex,
+        isContinue,
+      };
+
+      let status: number | undefined;
+      let dest: string | undefined;
+      let headers: HttpHeadersConfig | undefined;
+
+      // Edge Middleware can only happen during "null" phase
+      if (phase == null && route.middlewarePath != null) {
+
+        entry = {
+          ...entry,
+          middlewarePath: route.middlewarePath
+        };
+
+        if (this._onMiddlewareMatch != null) {
+          this._onMiddlewareMatch();
+        }
+
+        // redirect - status + location header
+        // rewrite - x-middleware-rewrite
+
+        // next - x-middleware-next. This is supposed to continue the middleware
+        // chain. Currently Next seems to only allow you to
+        // set request headers
+        // set response cookies, and set response headers
+        // if this is not present, then just return the response.
+
+        // request headers are set in NextResponse.request.headers
+        // they are transferred to the headers:
+        // x-middleware-request-
+        // and
+        // x-middleware-override-headers
+        // set these on request headers before going to next
+
+        // response headers/cookies are just on the headers
+        // so apply them.
+
+        // status - probably don't use, but get it from the response
+
+      } else {
+
+        dest = route.dest;
+        status = route.status;
+        headers = route.headers;
+
+        entry = {
+          ...entry,
+          dest,
+          status,
+          headers,
+        };
 
         let destPathname = routeMatcherContext.pathname;
         if (route.dest != null) {
@@ -216,13 +200,21 @@ export default class RouteMatcher {
 
       }
 
+      matchedEntries.push(entry);
+
       if (!route.continue) {
+        // We are exiting because a match
+        // "continue" doesn't count as a match
+        matchedRoute = route;
         break;
       }
 
     }
 
-    return results;
+    return {
+      matchedEntries,
+      matchedRoute,
+    };
 
   }
 
