@@ -11,9 +11,23 @@ import {
 import { resolveRouteParameters } from "./RouteSrcMatcher";
 import { applyRouteResults, isURL, testRoute}  from "../utils/routing";
 
+export type InitHeadersHandler = () => Promise<HttpHeadersConfig> | HttpHeadersConfig;
+
+export type CheckFilesystemHandler =
+  (pathname: string) => Promise<boolean> | boolean;
+
+export type MiddlewareHandler =
+  (middlewarePath: string, routeMatcherContext: RouteMatcherContext) => Promise<MiddlewareResponse>;
+
 export default class RouteMatcher {
 
   _routesCollection: RoutesCollection;
+
+  onCheckFilesystem?: CheckFilesystemHandler;
+
+  onMiddleware?: MiddlewareHandler;
+
+  onInitHeaders?: InitHeadersHandler;
 
   constructor(routesCollection: RoutesCollection) {
     this._routesCollection = routesCollection;
@@ -24,6 +38,9 @@ export default class RouteMatcher {
   }
 
   async checkFilesystem(pathname: string): Promise<boolean> {
+    if (this.onCheckFilesystem != null) {
+      return this.onCheckFilesystem(pathname);
+    }
     return true;
   }
 
@@ -32,6 +49,10 @@ export default class RouteMatcher {
     routeMatcherContext: RouteMatcherContext
   ): Promise<MiddlewareResponse> {
 
+    if (this.onMiddleware != null) {
+      return await this.onMiddleware(middlewarePath, routeMatcherContext);
+    }
+
     return {
       isContinue: true,
     };
@@ -39,6 +60,9 @@ export default class RouteMatcher {
   }
 
   async initHeaders(): Promise<HttpHeadersConfig> {
+    if (this.onInitHeaders != null) {
+      return this.onInitHeaders();
+    }
     return {};
   }
 
