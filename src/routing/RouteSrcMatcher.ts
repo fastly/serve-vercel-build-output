@@ -1,5 +1,6 @@
 import PCRE from "pcre-to-regexp";
 import { isHandler, Route, RouteWithSrc } from "@vercel/routing-utils";
+import { ValuesAndReplacements } from "../types/routing";
 
 export type RegExpAndKeys = {
   matcher: RegExp,
@@ -12,8 +13,8 @@ export function resolveRouteParameters(
   str: string,
   match: string[],
   keys: string[]
-): string {
-  return str.replace(/\$([1-9a-zA-Z]+)/g, (_, param) => {
+): ValuesAndReplacements {
+  const finalValue = str.replace(/\$([1-9a-zA-Z]+)/g, (_, param) => {
     let matchIndex: number = keys.indexOf(param);
     if (matchIndex === -1) {
       // It's a number match, not a named capture
@@ -25,6 +26,20 @@ export function resolveRouteParameters(
     }
     return match[matchIndex] || '';
   });
+
+  const replacementTokens: Record<string, string> = {};
+  for (const [index, key] of keys.entries()) {
+    replacementTokens[`$${key}`] = match[index+1] ?? '';
+  }
+  for (const [index, value] of match.entries()) {
+    replacementTokens[`$${index}`] = value;
+  }
+
+  return {
+    originalValue: str,
+    replacementTokens,
+    finalValue,
+  };
 }
 
 

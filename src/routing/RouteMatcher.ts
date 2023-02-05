@@ -1,17 +1,17 @@
+import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
 import { RoutesCollection } from "./RoutesCollection";
 import { RouteMatcherContext } from "./RouteMatcherContext";
-import { HandleValue, isHandler, Route } from "@vercel/routing-utils";
-import { HttpHeadersConfig, PhaseRoutesResult, RouteMatchLogEntry } from "../types/routing";
+import {
+  HttpHeadersConfig, MiddlewareResponse,
+  PhaseResult,
+  PhaseRoutesResult,
+  RouteMatchResult, RouterResult,
+  ValuesAndReplacements
+} from "../types/routing";
 import { resolveRouteParameters } from "./RouteSrcMatcher";
-import { matchRoute } from "../utils/routing";
-
-type MiddlewareMatchHandler = () => boolean;
-
-
+import { applyRouteResults, isURL, testRoute}  from "../utils/routing";
 
 export default class RouteMatcher {
-
-  _onMiddlewareMatch: MiddlewareMatchHandler | null = null;
 
   _routesCollection: RoutesCollection;
 
@@ -19,43 +19,87 @@ export default class RouteMatcher {
     this._routesCollection = routesCollection;
   }
 
-  doRouter(routeMatcherContext: RouteMatcherContext) {
+  async doRouter(routeMatcherContext: RouteMatcherContext) {
+    await this.routeMainLoop(routeMatcherContext);
+  }
 
-    this.routeMainLoop(routeMatcherContext);
+  async checkFilesystem(pathname: string): Promise<boolean> {
+    return true;
+  }
+
+  async doMiddlewareFunction(
+    middlewarePath: string,
+    routeMatcherContext: RouteMatcherContext
+  ): Promise<MiddlewareResponse> {
+
+    return {
+      isContinue: true,
+    };
 
   }
 
-  checkFilesystem(routeMatcherContext: RouteMatcherContext) {
-
+  async initHeaders(): Promise<HttpHeadersConfig> {
+    return {};
   }
 
-  async doEdgeFunction(routeMatcherContext: RouteMatcherContext): Promise<Response> {
+  async routeMainLoop(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
 
-    // create Request from route matcher context
-    throw "not implemented";
+    const phaseResults: PhaseRoutesResult[] = [];
+    const headers = await this.initHeaders();
 
-  }
-
-  routeMainLoop(routeMatcherContext: RouteMatcherContext) {
+    function mergeHeaders(phase: HandleValue | null, phaseHeaders: HttpHeadersConfig | undefined) {
+      if (phaseHeaders != null) {
+        for (const [key, value] of Object.entries(phaseHeaders)) {
+          if ((phase === 'hit' || phase === 'miss') && Object.prototype.hasOwnProperty.call(headers, key.toLowerCase())) {
+            // For some reason,
+            // for hit or miss we only ADD headers, we don't overwrite.
+            continue;
+          }
+          headers[key.toLowerCase()] = value;
+        }
+      }
+    }
 
     let phase: HandleValue | null = null;
 
     while(true) {
-      const results = this.doPhaseRoutes(phase, routeMatcherContext);
+      const phaseResult = await this.doPhaseRoutes(phase, routeMatcherContext);
+      phaseResults.push(phaseResult);
 
-      // null phase cannot have check
-      if (phase != null && results.matchedRoute?.check) {
-        // "check" restarts this loop at the rewrite phase.
+      mergeHeaders(phase, phaseResult.headers);
+
+      if (phaseResult.middlewareResponse != null) {
+        // is middleware response
+        return {
+          phaseResults,
+          headers,
+          dest: phaseResult.dest,
+          middlewareResponse: phaseResult.middlewareResponse,
+          type: 'middleware',
+        };
+      }
+
+      if (phaseResult.isDestUrl) {
+        // is destination URL, we will proxy and be done with it
+        return {
+          phaseResults,
+          headers,
+          dest: phaseResult.dest,
+          type: 'proxy',
+        };
+      }
+
+      // See if we are supposed to do a "check".
+      // "check" restarts this loop at the rewrite phase.
+      if (phase != null && phaseResult.isCheck) {
+        // null phase cannot have check
         phase = 'rewrite';
         continue;
       }
 
-      // results
-      // check if dest is a full URL or a relative URL
-      // - full URL -> pipe through backend
-
       // match the file to filesystem
-      let matched = true;
+      // this can be a static file OR a function
+      let matched = await this.checkFilesystem(phaseResult.dest);
 
       // check redirects and status codes
       // send redirect or send error
@@ -63,19 +107,35 @@ export default class RouteMatcher {
       // check match
       if (matched) {
 
-        const hitResults = this.doPhaseRoutes('hit', routeMatcherContext);
-        if (hitResults.matchedRoute != null) {
-          // items will all have "continue": true
-          // so there will be no matched route.
-          // if there is one then it's unexpected.
+        const hitResults = await this.doPhaseRoutes('hit', routeMatcherContext);
+        phaseResults.push(hitResults);
+
+        if (hitResults.matchedRoute != null ||
+          hitResults.status != null ||
+          hitResults.dest != null
+        ) {
+          // items will all have "continue": true so there will be no matched route.
+          // items here cannot set status or a destination path
           throw "unexpected";
         }
 
+        mergeHeaders('hit', hitResults.headers);
+
         // serve it and end
+        return {
+          phaseResults,
+          headers,
+          dest: phaseResult.dest,
+          type: 'filesystem',
+        };
 
       } else {
 
-        const missRoutes = this.doPhaseRoutes('miss', routeMatcherContext);
+        const missRoutes = await this.doPhaseRoutes('miss', routeMatcherContext);
+        phaseResults.push(missRoutes);
+
+        mergeHeaders('miss', missRoutes.headers);
+
         if (missRoutes.matchedRoute != null) {
           // if matches, then it has a dest and check
           if (
@@ -112,12 +172,122 @@ export default class RouteMatcher {
       break;
     }
 
+    // TODO: probably do error routes here
+
+    return {
+      phaseResults,
+      status: 404,
+      headers,
+      dest: '',
+      type: 'error',
+    };
+
   }
 
-  doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext): PhaseRoutesResult {
+  async matchRoute(phase: HandleValue | null, routeIndex: number, route: RouteWithSrc, routeMatcherContext: RouteMatcherContext): Promise<RouteMatchResult | false> {
 
-    const matchedEntries: RouteMatchLogEntry[] = [];
-    let matchedRoute: Route | undefined = undefined;
+    const testRouteResult = testRoute(route, routeMatcherContext);
+    if (!testRouteResult) {
+      return false;
+    }
+
+    let isContinue: boolean | undefined;
+    let status: number | undefined = undefined;
+    let requestHeaders: HttpHeadersConfig | undefined = undefined;
+    let headers: Record<string, ValuesAndReplacements> | undefined = undefined;
+    let dest: ValuesAndReplacements | undefined = undefined;
+    let isDestUrl: boolean;
+    let middlewarePath: string | undefined = undefined;
+    let middlewareResponse: Response | undefined = undefined;
+    let isCheck: boolean;
+
+    // Edge Middleware can only happen during "null" phase
+    if (phase == null && route.middlewarePath != null) {
+
+      middlewarePath = route.middlewarePath;
+
+      const response = await this.doMiddlewareFunction(middlewarePath, routeMatcherContext);
+
+      status = response.status;
+      if (response.dest != null) {
+        dest = {
+          originalValue: response.dest,
+          finalValue: response.dest,
+        };
+      }
+
+      if(response.headers) {
+        for (const [key, value] of Object.entries(response.headers)) {
+          if (headers == null) {
+            headers = {};
+          }
+          headers[key.toLowerCase()] = {
+            originalValue: value,
+            finalValue: value,
+          };
+        }
+      }
+
+      requestHeaders = response.requestHeaders;
+      isContinue = response.isContinue;
+
+      if (response.response != null) {
+        middlewareResponse = response.response;
+      }
+
+    } else {
+
+      isContinue = route.continue ?? false;
+
+      if (route.dest != null) {
+        dest = resolveRouteParameters(route.dest, testRouteResult.match, testRouteResult.keys);
+      }
+
+      if (route.headers != null) {
+        for (const [key, value] of Object.entries(route.headers)) {
+          if (headers == null) {
+            headers = {};
+          }
+          headers[key.toLowerCase()] = resolveRouteParameters(value, testRouteResult.match, testRouteResult.keys);
+        }
+      }
+
+      if (route.status != null) {
+        status = route.status;
+      }
+    }
+
+    isDestUrl = dest != null ? isURL(dest.finalValue) : false;
+    isCheck = route.check ?? false;
+
+    return {
+      phase,
+      src: routeMatcherContext.pathname,
+      route,
+      routeIndex,
+      isContinue,
+      status,
+      headers,
+      requestHeaders,
+      dest,
+      isDestUrl,
+      isCheck,
+      middlewarePath,
+      middlewareResponse,
+    };
+  }
+
+  async doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext): Promise<PhaseRoutesResult> {
+
+    const matchedEntries: RouteMatchResult[] = [];
+    let matchedRoute: RouteWithSrc | undefined = undefined;
+
+    const phaseResult: PhaseResult = {
+      phase,
+      dest: routeMatcherContext.pathname,
+      isDestUrl: false,
+      isCheck: false,
+    };
 
     const phaseRoutes = this._routesCollection.getPhaseRoutes(phase);
 
@@ -128,94 +298,34 @@ export default class RouteMatcher {
         continue;
       }
 
-      const matchResult = matchRoute(route, routeMatcherContext);
-      if (!matchResult) {
+      const routeMatchResult = await this.matchRoute(phase, routeIndex, route, routeMatcherContext);
+      if(!routeMatchResult) {
         continue;
       }
 
-      const isContinue = route.continue;
+      matchedEntries.push(routeMatchResult);
 
-      let entry: RouteMatchLogEntry = {
-        phase,
-        src: routeMatcherContext.pathname,
-        route,
-        routeIndex,
-        isContinue,
-      };
+      // Apply results from this route
+      applyRouteResults(routeMatchResult, phaseResult, routeMatcherContext);
 
-      let status: number | undefined;
-      let dest: string | undefined;
-      let headers: HttpHeadersConfig | undefined;
-
-      // Edge Middleware can only happen during "null" phase
-      if (phase == null && route.middlewarePath != null) {
-
-        entry = {
-          ...entry,
-          middlewarePath: route.middlewarePath
-        };
-
-        if (this._onMiddlewareMatch != null) {
-          this._onMiddlewareMatch();
-        }
-
-        // redirect - status + location header
-        // rewrite - x-middleware-rewrite
-
-        // next - x-middleware-next. This is supposed to continue the middleware
-        // chain. Currently Next seems to only allow you to
-        // set request headers
-        // set response cookies, and set response headers
-        // if this is not present, then just return the response.
-
-        // request headers are set in NextResponse.request.headers
-        // they are transferred to the headers:
-        // x-middleware-request-
-        // and
-        // x-middleware-override-headers
-        // set these on request headers before going to next
-
-        // response headers/cookies are just on the headers
-        // so apply them.
-
-        // status - probably don't use, but get it from the response
-
-      } else {
-
-        dest = route.dest;
-        status = route.status;
-        headers = route.headers;
-
-        entry = {
-          ...entry,
-          dest,
-          status,
-          headers,
-        };
-
-        let destPathname = routeMatcherContext.pathname;
-        if (route.dest != null) {
-          destPathname = resolveRouteParameters(route.dest, matchResult.match, matchResult.keys);
-        }
-
-      }
-
-      matchedEntries.push(entry);
-
-      if (!route.continue) {
-        // We are exiting because a match
-        // "continue" doesn't count as a match
+      if (
+        routeMatchResult.middlewareResponse != null ||
+        routeMatchResult.isDestUrl ||
+        !routeMatchResult.isContinue
+      ) {
+        // if this is a "dest url" or "continue" is false, then
+        // we are exiting as a match
         matchedRoute = route;
         break;
       }
 
+      // "continue" doesn't count as a match
     }
 
     return {
+      ...phaseResult,
       matchedEntries,
       matchedRoute,
     };
-
   }
-
 }
