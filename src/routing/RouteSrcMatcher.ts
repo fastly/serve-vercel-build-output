@@ -7,7 +7,7 @@ export type RegExpAndKeys = {
   keys: string[],
 };
 
-export type RouteSrcMatchResult = ReturnType<typeof RouteSrcMatcher['exec']>;
+export type RouteSrcMatchResult = Exclude<ReturnType<typeof RouteSrcMatcher['exec']>, null>;
 
 export function resolveRouteParameters(
   str: string,

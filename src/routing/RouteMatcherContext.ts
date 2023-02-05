@@ -27,6 +27,11 @@ type RouteMatcherContextInit = {
   body: ReadableStream<Uint8Array> | null;
 };
 
+type UrlInit = {
+  method?: string;
+  headers?: HttpHeadersConfig;
+};
+
 export type RequestBuilder = (input: URL | RequestInfo, init: RequestInit) => Request;
 
 function defaultRequestBuilder(input: URL | RequestInfo, init: RequestInit) {
@@ -110,11 +115,16 @@ export class RouteMatcherContext {
 
   }
 
-  static fromUrl(requestUrl: string, method = 'GET') {
+  static fromUrl(requestUrl: string, init: UrlInit = {}) {
+
+    const {
+      method = 'GET',
+      headers = {},
+    } = init;
 
     return new RouteMatcherContext({
       method,
-      headers: {},
+      headers,
       url: requestUrl,
       body: null,
     });

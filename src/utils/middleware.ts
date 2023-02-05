@@ -1,6 +1,6 @@
 import { HttpHeadersConfig, MiddlewareResponse } from "../types/routing";
 
-function processMiddlewareResponse(response: Response): MiddlewareResponse {
+export function processMiddlewareResponse(response: Response): MiddlewareResponse {
 
   let returnResponse = true;
   let isContinue = false;
@@ -63,6 +63,10 @@ function processMiddlewareResponse(response: Response): MiddlewareResponse {
       headers = {};
     }
     headers[key.toLowerCase()] = value;
+  }
+
+  if (returnResponse || response.status !== 200) {
+    status = response.status;
   }
 
   return {
