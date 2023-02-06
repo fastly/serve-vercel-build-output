@@ -438,7 +438,7 @@ describe('routing/RouteMatcher', function () {
         assert.strictEqual(phaseRoutesResult.matchedRoute, routes[2]);
       });
 
-      it('continue checks next route as well', async function() {
+      it('continue will continue to next route', async function() {
 
         const routes: Route[] = [
           {
@@ -522,6 +522,215 @@ describe('routing/RouteMatcher', function () {
           },
         ]);
         assert.strictEqual(phaseRoutesResult.matchedRoute, routes[3]);
+      });
+
+      it('middleware that returns next', async function() {
+
+        const routes: Route[] = [
+          {
+            src: '^/foo$',
+            middlewarePath: 'middleware-id',
+          },
+          {
+            src: '^/foo',
+            dest: '/baz',
+          },
+        ];
+
+        const routesCollection = new RoutesCollection(routes);
+        const routeMatcher = new RouteMatcher(routesCollection);
+        routeMatcher.onMiddleware = (middlewarePath) => {
+          assert.strictEqual(middlewarePath, 'middleware-id');
+          return {
+            isContinue: true,
+          };
+        };
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+
+        const phaseRoutesResult = await routeMatcher.doPhaseRoutes(null, routeMatcherContext);
+
+        assert.deepStrictEqual(phaseRoutesResult.phase, null);
+        assert.deepStrictEqual(phaseRoutesResult.status, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.requestHeaders, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.headers, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz');
+        assert.deepStrictEqual(phaseRoutesResult.middlewareResponse, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.isDestUrl, false);
+        assert.deepStrictEqual(phaseRoutesResult.isCheck, false);
+
+        assert.deepStrictEqual(phaseRoutesResult.matchedEntries, [
+          {
+            phase: null,
+            src: '/foo',
+            route: routes[0],
+            routeIndex: 0,
+            isContinue: true,
+            status: undefined,
+            headers: undefined,
+            requestHeaders: undefined,
+            dest: undefined,
+            middlewarePath: 'middleware-id',
+            middlewareResponse: undefined,
+            isDestUrl: false,
+            isCheck: false,
+          },
+          {
+            phase: null,
+            src: '/foo',
+            route: routes[1],
+            routeIndex: 1,
+            isContinue: false,
+            status: undefined,
+            headers: undefined,
+            requestHeaders: undefined,
+            dest: {
+              originalValue: '/baz',
+              finalValue: '/baz',
+            },
+            middlewarePath: undefined,
+            middlewareResponse: undefined,
+            isDestUrl: false,
+            isCheck: false,
+          },
+        ]);
+        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[1]);
+      });
+
+      it('middleware with dest and next', async function() {
+
+        const routes: Route[] = [
+          {
+            src: '^/foo$',
+            middlewarePath: 'middleware-id',
+          },
+          {
+            src: '^/bar',
+            dest: '/baz',
+          },
+        ];
+
+        const routesCollection = new RoutesCollection(routes);
+        const routeMatcher = new RouteMatcher(routesCollection);
+        routeMatcher.onMiddleware = (middlewarePath) => {
+          assert.strictEqual(middlewarePath, 'middleware-id');
+          return {
+            dest: '/bar',
+            isContinue: true,
+          };
+        };
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+
+        const phaseRoutesResult = await routeMatcher.doPhaseRoutes(null, routeMatcherContext);
+
+        assert.deepStrictEqual(phaseRoutesResult.phase, null);
+        assert.deepStrictEqual(phaseRoutesResult.status, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.requestHeaders, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.headers, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz');
+        assert.deepStrictEqual(phaseRoutesResult.middlewareResponse, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.isDestUrl, false);
+        assert.deepStrictEqual(phaseRoutesResult.isCheck, false);
+
+        assert.deepStrictEqual(phaseRoutesResult.matchedEntries, [
+          {
+            phase: null,
+            src: '/foo',
+            route: routes[0],
+            routeIndex: 0,
+            isContinue: true,
+            status: undefined,
+            headers: undefined,
+            requestHeaders: undefined,
+            dest: {
+              originalValue: '/bar',
+              finalValue: '/bar',
+            },
+            middlewarePath: 'middleware-id',
+            middlewareResponse: undefined,
+            isDestUrl: false,
+            isCheck: false,
+          },
+          {
+            phase: null,
+            src: '/bar',
+            route: routes[1],
+            routeIndex: 1,
+            isContinue: false,
+            status: undefined,
+            headers: undefined,
+            requestHeaders: undefined,
+            dest: {
+              originalValue: '/baz',
+              finalValue: '/baz',
+            },
+            middlewarePath: undefined,
+            middlewareResponse: undefined,
+            isDestUrl: false,
+            isCheck: false,
+          },
+        ]);
+        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[1]);
+      });
+
+      it('middleware with dest only', async function() {
+
+        const routes: Route[] = [
+          {
+            src: '^/foo$',
+            middlewarePath: 'middleware-id',
+          },
+          {
+            src: '^/bar',
+            dest: '/baz',
+          },
+        ];
+
+        const routesCollection = new RoutesCollection(routes);
+        const routeMatcher = new RouteMatcher(routesCollection);
+        routeMatcher.onMiddleware = (middlewarePath) => {
+          assert.strictEqual(middlewarePath, 'middleware-id');
+          return {
+            dest: '/bar',
+            isContinue: false,
+          };
+        };
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+
+        const phaseRoutesResult = await routeMatcher.doPhaseRoutes(null, routeMatcherContext);
+
+        assert.deepStrictEqual(phaseRoutesResult.phase, null);
+        assert.deepStrictEqual(phaseRoutesResult.status, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.requestHeaders, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.headers, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.dest, '/bar');
+        assert.deepStrictEqual(phaseRoutesResult.middlewareResponse, undefined);
+        assert.deepStrictEqual(phaseRoutesResult.isDestUrl, false);
+        assert.deepStrictEqual(phaseRoutesResult.isCheck, false);
+
+        assert.deepStrictEqual(phaseRoutesResult.matchedEntries, [
+          {
+            phase: null,
+            src: '/foo',
+            route: routes[0],
+            routeIndex: 0,
+            isContinue: false,
+            status: undefined,
+            headers: undefined,
+            requestHeaders: undefined,
+            dest: {
+              originalValue: '/bar',
+              finalValue: '/bar',
+            },
+            middlewarePath: 'middleware-id',
+            middlewareResponse: undefined,
+            isDestUrl: false,
+            isCheck: false,
+          },
+        ]);
+        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[0]);
       });
 
       it('continue on final route means no match', async function() {
