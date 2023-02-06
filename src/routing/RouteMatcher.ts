@@ -39,7 +39,7 @@ export default class RouteMatcher {
     if (this.onCheckFilesystem != null) {
       return this.onCheckFilesystem(pathname);
     }
-    return true;
+    return false;
   }
 
   async doMiddlewareFunction(
@@ -132,13 +132,10 @@ export default class RouteMatcher {
         const hitResults = await this.doPhaseRoutes('hit', routeMatcherContext);
         phaseResults.push(hitResults);
 
-        if (hitResults.matchedRoute != null ||
-          hitResults.status != null ||
-          hitResults.dest != null
-        ) {
+        if (hitResults.matchedRoute != null) {
           // items will all have "continue": true so there will be no matched route.
           // items here cannot set status or a destination path
-          throw "unexpected";
+          throw new Error("hit phase routes must have continue");
         }
 
         mergeHeaders('hit', hitResults.headers);
@@ -153,16 +150,16 @@ export default class RouteMatcher {
 
       } else {
 
-        const missRoutes = await this.doPhaseRoutes('miss', routeMatcherContext);
-        phaseResults.push(missRoutes);
+        const missResults = await this.doPhaseRoutes('miss', routeMatcherContext);
+        phaseResults.push(missResults);
 
-        mergeHeaders('miss', missRoutes.headers);
+        mergeHeaders('miss', missResults.headers);
 
-        if (missRoutes.matchedRoute != null) {
+        if (missResults.matchedRoute != null) {
           // if matches, then it has a dest and check
           if (
-            missRoutes.matchedRoute.dest != null &&
-            missRoutes.matchedRoute.check
+            missResults.matchedRoute.dest != null &&
+            missResults.matchedRoute.check
           ) {
             // "check" restarts this loop at the rewrite phase.
             phase = 'rewrite';
@@ -200,7 +197,7 @@ export default class RouteMatcher {
       phaseResults,
       status: 404,
       headers,
-      dest: '',
+      dest: routeMatcherContext.pathname,
       type: 'error',
     };
 

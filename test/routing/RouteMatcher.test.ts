@@ -31,7 +31,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(null);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        assert.ok(await routeMatcher.checkFilesystem('foo/bar'));
+        assert.ok(!(await routeMatcher.checkFilesystem('foo/bar')));
 
       });
 
@@ -182,7 +182,31 @@ describe('routing/RouteMatcher', function () {
       // we only do simple cases here, we will be doing a lot of end-to-end in
       // integration tests
 
-      // TODO: tests
+      it('initHeaders', async function() {
+
+        const routesCollection = new RoutesCollection(null);
+        const routeMatcher = new RouteMatcher(routesCollection);
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+
+        routeMatcher.onInitHeaders = () => {
+          return {
+            'foo': 'bar',
+          };
+        };
+
+        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+
+        assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), []);
+        assert.strictEqual(routerResult.status, 404);
+        assert.deepStrictEqual(routerResult.headers, {
+          'foo': 'bar',
+        });
+        assert.strictEqual(routerResult.dest, '/foo/bar');
+        assert.strictEqual(routerResult.type, 'error');
+        assert.strictEqual(routerResult.middlewareResponse, undefined);
+
+      });
     });
 
     describe('doPhaseRoutes', function () {
