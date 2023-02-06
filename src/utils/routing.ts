@@ -126,13 +126,13 @@ export function applyRouteResults(
     if (phaseResult.headers == null) {
       phaseResult.headers = {};
     }
-    for (const [key, valuesAndReplacements] of Object.entries(headers)) {
-      phaseResult.headers[key.toLowerCase()] = valuesAndReplacements.finalValue;
+    for (const [key, value] of Object.entries(flattenValuesAndReplacementsObject(headers))) {
+      phaseResult.headers[key.toLowerCase()] = value;
     }
   }
 
   if (dest != null) {
-    let destPath = dest.finalValue;
+    let destPath = flattenValuesAndReplacements(dest);
 
     let destUrl: URL;
     if (!isURL(dest.finalValue) && !destPath.startsWith('/')) {
@@ -278,11 +278,14 @@ export function resolveRouteParameters(
   match: string[],
   keys: string[]
 ): ValuesAndReplacements {
-  const finalValue = str.replace(/\$([1-9a-zA-Z]+)/g, (_, param) => {
+  const finalValue = str.replace(/\$([0-9a-zA-Z]+)/g, (_, param) => {
     let matchIndex: number = keys.indexOf(param);
     if (matchIndex === -1) {
       // It's a number match, not a named capture
       matchIndex = parseInt(param, 10);
+      if (matchIndex === 0) {
+        return '$0';
+      }
     } else {
       // For named captures, add one to the `keys` index to
       // match up with the RegExp group matches
@@ -291,11 +294,21 @@ export function resolveRouteParameters(
     return match[matchIndex] || '';
   });
 
-  const replacementTokens: Record<string, string> = {};
+  let replacementTokens: Record<string, string> | undefined;
   for (const [index, key] of keys.entries()) {
+    if (replacementTokens == null) {
+      replacementTokens = {};
+    }
     replacementTokens[`$${key}`] = match[index+1] ?? '';
   }
   for (const [index, value] of match.entries()) {
+    if (index === 0) {
+      // don't allow 0
+      continue;
+    }
+    if (replacementTokens == null) {
+      replacementTokens = {};
+    }
     replacementTokens[`$${index}`] = value;
   }
 
