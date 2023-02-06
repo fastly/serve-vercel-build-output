@@ -42,6 +42,21 @@ export function resolveRouteParameters(
   };
 }
 
+export function flattenValuesAndReplacements(
+  valuesAndReplacements: ValuesAndReplacements,
+) {
+  return valuesAndReplacements.finalValue;
+}
+
+export function flattenValuesAndReplacementsObject(
+  valuesAndReplacementsObject: Record<string, ValuesAndReplacements>,
+) {
+  const resultObject: Record<string, string> = {};
+  for (const [key, value] of Object.entries(valuesAndReplacementsObject)) {
+    resultObject[key] = flattenValuesAndReplacements(value);
+  }
+  return resultObject;
+}
 
 export class RouteSrcMatcher {
 

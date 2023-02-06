@@ -1,4 +1,5 @@
 import { HandleValue, Route, RouteWithSrc } from "@vercel/routing-utils";
+import {RouteMatcherContext} from "../routing/RouteMatcherContext";
 
 export type HttpHeadersConfig = Record<string, string>;
 
@@ -91,6 +92,11 @@ export type RouterResult = {
   type?: 'filesystem' | 'middleware' | 'proxy' | 'error';
   middlewareResponse?: Response;
 }
+
+type PromiseOrValue<T> = Promise<T> | T;
+
+export type MiddlewareHandler =
+  (middlewarePath: string, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<MiddlewareResponse>;
 
 export type MiddlewareResponse = {
   status?: number;

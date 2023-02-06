@@ -1,9 +1,15 @@
-import * as assert from "assert";
-import { RouteWithSrc } from "@vercel/routing-utils";
+// noinspection DuplicatedCode
 
-import {isURL, testRoute} from "../../src/utils/routing";
+import * as assert from "assert";
+
+import { RouteWithSrc } from "@vercel/routing-utils";
+import { isURL, matchRoute, testRoute } from "../../src/utils/routing";
 import { RouteMatcherContext } from "../../src/routing/RouteMatcherContext";
-import { resolveRouteParameters } from "../../src/routing/RouteSrcMatcher";
+import {
+  flattenValuesAndReplacements,
+  flattenValuesAndReplacementsObject,
+  resolveRouteParameters
+} from "../../src/routing/RouteSrcMatcher";
 
 describe('utils/routing', function() {
   describe('testRoute', function() {
@@ -172,5 +178,131 @@ describe('utils/routing', function() {
       assert.ok(result);
     });
   });
+
+  describe('matchRoute', function() {
+
+    it('failed testRoute should return false', async function () {
+
+      const route: RouteWithSrc = {
+        src: '^/$'
+      };
+
+      const matchResult = await matchRoute(
+        null,
+        0,
+        route,
+        RouteMatcherContext.fromUrl('https://www.example.com/foo'),
+      );
+
+      assert.ok(!matchResult);
+
+    });
+
+    it('middleware should get called', async function () {
+
+      const route: RouteWithSrc = {
+        src: '^/foo/$',
+        middlewarePath: 'middleware-id'
+      };
+
+      let middlewarePathCalled: string | undefined;
+
+      const response = new Response(null);
+
+      const matchResult = await matchRoute(
+        null,
+        0,
+        route,
+        RouteMatcherContext.fromUrl('https://www.example.com/foo/'),
+        (middlewarePath) => {
+          middlewarePathCalled = middlewarePath;
+          return {
+            status: 201,
+            dest: '/bar',
+            headers: {
+              'foo': 'bar',
+            },
+            requestHeaders: {
+              'hoge': 'piyo',
+            },
+            response,
+            isContinue: false,
+          };
+        }
+      );
+
+      assert.ok(matchResult);
+      assert.strictEqual(matchResult.phase, null);
+      assert.strictEqual(matchResult.src, '/foo/');
+      assert.strictEqual(matchResult.routeIndex, 0);
+      assert.strictEqual(matchResult.route, route);
+      assert.ok(!matchResult.isContinue);
+      assert.strictEqual(matchResult.status, 201);
+      assert.deepStrictEqual(flattenValuesAndReplacementsObject(matchResult.headers!), {
+        'foo': 'bar',
+      });
+      assert.deepStrictEqual(matchResult.requestHeaders, {
+        'hoge': 'piyo',
+      });
+      assert.deepStrictEqual(flattenValuesAndReplacements(matchResult.dest!), '/bar' );
+      assert.ok(!matchResult.isDestUrl);
+      assert.ok(!matchResult.isCheck);
+      assert.strictEqual(matchResult.middlewarePath, 'middleware-id');
+      assert.strictEqual(matchResult.middlewareResponse, response);
+
+    });
+
+    it('middleware won\'t get called for non-null phase', async function () {
+
+      const route: RouteWithSrc = {
+        src: '^/foo/$',
+        middlewarePath: 'middleware-id'
+      };
+
+      let middlewarePathCalled: string | undefined;
+
+      const response = new Response(null);
+
+      const matchResult = await matchRoute(
+        'filesystem',
+        0,
+        route,
+        RouteMatcherContext.fromUrl('https://www.example.com/foo/'),
+        (middlewarePath) => {
+          middlewarePathCalled = middlewarePath;
+          return {
+            status: 201,
+            dest: '/bar',
+            headers: {
+              'foo': 'bar',
+            },
+            requestHeaders: {
+              'hoge': 'piyo',
+            },
+            response,
+            isContinue: false,
+          };
+        }
+      );
+
+      assert.ok(matchResult);
+      assert.strictEqual(matchResult.phase, 'filesystem');
+      assert.strictEqual(matchResult.src, '/foo/');
+      assert.strictEqual(matchResult.routeIndex, 0);
+      assert.strictEqual(matchResult.route, route);
+      assert.ok(!matchResult.isContinue);
+      assert.strictEqual(matchResult.status, undefined);
+      assert.deepStrictEqual(matchResult.headers, undefined);
+      assert.deepStrictEqual(matchResult.requestHeaders, undefined);
+      assert.deepStrictEqual(matchResult.dest, undefined);
+      assert.ok(!matchResult.isDestUrl);
+      assert.ok(!matchResult.isCheck);
+      assert.strictEqual(matchResult.middlewarePath, undefined);
+      assert.strictEqual(matchResult.middlewareResponse, undefined);
+
+    });
+
+  });
+
 });
 

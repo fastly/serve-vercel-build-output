@@ -1,8 +1,14 @@
-import { RouteWithSrc } from "@vercel/routing-utils";
+import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
 import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import { RouteSrcMatcher, RouteSrcMatchResult } from "../routing/RouteSrcMatcher";
+import { resolveRouteParameters, RouteSrcMatcher, RouteSrcMatchResult} from "../routing/RouteSrcMatcher";
 import { HasFieldEntry } from "../types/server";
-import { PhaseResult, RouteMatchResult } from "../types/routing";
+import {
+  HttpHeadersConfig,
+  MiddlewareHandler,
+  PhaseResult,
+  RouteMatchResult,
+  ValuesAndReplacements
+} from "../types/routing";
 import { formatQueryString, parseQueryString } from "./query";
 
 export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext): RouteSrcMatchResult | false {
@@ -163,4 +169,108 @@ export function applyRouteResults(
  */
 export function isURL(str: any): boolean {
   return typeof str === 'string' && /^https?:\/\//.test(str);
+}
+
+
+
+/**
+ * matchRoute
+ */
+export async function matchRoute(
+  phase: HandleValue | null,
+  routeIndex: number,
+  route: RouteWithSrc,
+  routeMatcherContext: RouteMatcherContext,
+  middlewareHandler?: MiddlewareHandler,
+): Promise<RouteMatchResult | false> {
+
+  const testRouteResult = testRoute(route, routeMatcherContext);
+  if (!testRouteResult) {
+    return false;
+  }
+
+  let isContinue: boolean | undefined;
+  let status: number | undefined = undefined;
+  let requestHeaders: HttpHeadersConfig | undefined = undefined;
+  let headers: Record<string, ValuesAndReplacements> | undefined = undefined;
+  let dest: ValuesAndReplacements | undefined = undefined;
+  let isDestUrl: boolean;
+  let middlewarePath: string | undefined = undefined;
+  let middlewareResponse: Response | undefined = undefined;
+  let isCheck: boolean;
+
+  // Edge Middleware can only happen during "null" phase
+  if (phase == null && route.middlewarePath != null) {
+
+    middlewarePath = route.middlewarePath;
+
+    const response = middlewareHandler != null ? await middlewareHandler(middlewarePath, routeMatcherContext) : { isContinue: true };
+
+    status = response.status;
+    if (response.dest != null) {
+      dest = {
+        originalValue: response.dest,
+        finalValue: response.dest,
+      };
+    }
+
+    if(response.headers) {
+      for (const [key, value] of Object.entries(response.headers)) {
+        if (headers == null) {
+          headers = {};
+        }
+        headers[key.toLowerCase()] = {
+          originalValue: value,
+          finalValue: value,
+        };
+      }
+    }
+
+    requestHeaders = response.requestHeaders;
+    isContinue = response.isContinue;
+
+    if (response.response != null) {
+      middlewareResponse = response.response;
+    }
+
+  } else {
+
+    isContinue = route.continue ?? false;
+
+    if (route.dest != null) {
+      dest = resolveRouteParameters(route.dest, testRouteResult.match, testRouteResult.keys);
+    }
+
+    if (route.headers != null) {
+      for (const [key, value] of Object.entries(route.headers)) {
+        if (headers == null) {
+          headers = {};
+        }
+        headers[key.toLowerCase()] = resolveRouteParameters(value, testRouteResult.match, testRouteResult.keys);
+      }
+    }
+
+    if (route.status != null) {
+      status = route.status;
+    }
+  }
+
+  isDestUrl = dest != null ? isURL(dest.finalValue) : false;
+  isCheck = route.check ?? false;
+
+  return {
+    phase,
+    src: routeMatcherContext.pathname,
+    route,
+    routeIndex,
+    isContinue,
+    status,
+    headers,
+    requestHeaders,
+    dest,
+    isDestUrl,
+    isCheck,
+    middlewarePath,
+    middlewareResponse,
+  };
 }
