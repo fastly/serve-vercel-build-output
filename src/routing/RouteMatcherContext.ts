@@ -24,17 +24,18 @@ type RouteMatcherContextInit = {
   method: string;
   url: string | URL;
   headers: HttpHeadersConfig;
-  body: ReadableStream<Uint8Array> | null;
+  body?: BodyInit | null;
 };
 
 type UrlInit = {
   method?: string;
   headers?: HttpHeadersConfig;
+  body?: BodyInit | null;
 };
 
 export type RequestBuilder = (input: URL | RequestInfo, init: RequestInit) => Request;
 
-function defaultRequestBuilder(input: URL | RequestInfo, init: RequestInit) {
+export function defaultRequestBuilder(input: URL | RequestInfo, init?: RequestInit) {
   return new Request(input, init);
 }
 
@@ -89,7 +90,7 @@ export class RouteMatcherContext {
     return this._cookies;
   }
 
-  body: ReadableStream<Uint8Array> | null;
+  body: BodyInit | null;
 
   constructor(init: RouteMatcherContextInit) {
 
@@ -100,7 +101,7 @@ export class RouteMatcherContext {
 
     this._url = new URL(String(init.url));
 
-    this.body = init.body;
+    this.body = init.body ?? null;
 
   }
 
@@ -120,13 +121,14 @@ export class RouteMatcherContext {
     const {
       method = 'GET',
       headers = {},
+      body,
     } = init;
 
     return new RouteMatcherContext({
       method,
       headers,
       url: requestUrl,
-      body: null,
+      body: body ?? null,
     });
 
   }
@@ -134,7 +136,7 @@ export class RouteMatcherContext {
   toRequest(builder: RequestBuilder = defaultRequestBuilder): Request {
 
     return builder(
-      this.pathname,
+      this.url,
       {
         method: this.method,
         headers: this.headers,
