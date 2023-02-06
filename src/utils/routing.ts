@@ -312,11 +312,16 @@ export function resolveRouteParameters(
     replacementTokens[`$${index}`] = value;
   }
 
-  return {
+  const result = {
     originalValue: str,
-    replacementTokens,
     finalValue,
   };
+  if (replacementTokens != null) {
+    Object.assign(result, {
+      replacementTokens,
+    });
+  }
+  return result;
 }
 
 export function flattenValuesAndReplacements(

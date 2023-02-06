@@ -214,7 +214,7 @@ describe('utils/routing', function() {
     it('middleware should get called', async function () {
 
       const route: RouteWithSrc = {
-        src: '^/foo/$',
+        src: '^/foo$',
         middlewarePath: 'middleware-id'
       };
 
@@ -226,7 +226,7 @@ describe('utils/routing', function() {
         null,
         0,
         route,
-        RouteMatcherContext.fromUrl('https://www.example.com/foo/'),
+        RouteMatcherContext.fromUrl('https://www.example.com/foo'),
         (middlewarePath) => {
           middlewarePathCalled = middlewarePath;
           return {
@@ -246,7 +246,7 @@ describe('utils/routing', function() {
 
       assert.ok(matchResult);
       assert.strictEqual(matchResult.phase, null);
-      assert.strictEqual(matchResult.src, '/foo/');
+      assert.strictEqual(matchResult.src, '/foo');
       assert.strictEqual(matchResult.routeIndex, 0);
       assert.strictEqual(matchResult.route, route);
       assert.ok(!matchResult.isContinue);
@@ -268,7 +268,7 @@ describe('utils/routing', function() {
     it('middleware won\'t get called for non-null phase', async function () {
 
       const route: RouteWithSrc = {
-        src: '^/foo/$',
+        src: '^/foo$',
         middlewarePath: 'middleware-id'
       };
 
@@ -280,7 +280,7 @@ describe('utils/routing', function() {
         'filesystem',
         0,
         route,
-        RouteMatcherContext.fromUrl('https://www.example.com/foo/'),
+        RouteMatcherContext.fromUrl('https://www.example.com/foo'),
         (middlewarePath) => {
           middlewarePathCalled = middlewarePath;
           return {
@@ -300,7 +300,7 @@ describe('utils/routing', function() {
 
       assert.ok(matchResult);
       assert.strictEqual(matchResult.phase, 'filesystem');
-      assert.strictEqual(matchResult.src, '/foo/');
+      assert.strictEqual(matchResult.src, '/foo');
       assert.strictEqual(matchResult.routeIndex, 0);
       assert.strictEqual(matchResult.route, route);
       assert.ok(!matchResult.isContinue);

@@ -186,14 +186,13 @@ describe('routing/RouteMatcher', function () {
 
         const routesCollection = new RoutesCollection(null);
         const routeMatcher = new RouteMatcher(routesCollection);
-
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
-
         routeMatcher.onInitHeaders = () => {
           return {
             'foo': 'bar',
           };
         };
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
 
         const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
 
@@ -205,7 +204,153 @@ describe('routing/RouteMatcher', function () {
         assert.strictEqual(routerResult.dest, '/foo/bar');
         assert.strictEqual(routerResult.type, 'error');
         assert.strictEqual(routerResult.middlewareResponse, undefined);
+      });
 
+      it('filesystem result', async function () {
+        const routesCollection = new RoutesCollection(null);
+        const routeMatcher = new RouteMatcher(routesCollection);
+        routeMatcher.onCheckFilesystem = (pathname) => {
+          return pathname === '/foo/bar';
+        };
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+
+        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+
+        assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), []);
+        assert.strictEqual(routerResult.status, undefined);
+        assert.deepStrictEqual(routerResult.headers, {});
+        assert.strictEqual(routerResult.dest, '/foo/bar');
+        assert.strictEqual(routerResult.type, 'filesystem');
+        assert.strictEqual(routerResult.middlewareResponse, undefined);
+      });
+
+      it('middleware result', async function () {
+        const routes = [
+          {
+            src: '^/foo/bar$',
+            middlewarePath: 'middleware-id'
+          }
+        ];
+        const routesCollection = new RoutesCollection(routes);
+        const routeMatcher = new RouteMatcher(routesCollection);
+        const response = new Response(
+          'foo-body',
+          {
+            status: 201,
+            headers: {
+              'foo-header': 'bar-header',
+            },
+          }
+        );
+        routeMatcher.onMiddleware = (middlewarePath) => {
+          assert.strictEqual(middlewarePath, 'middleware-id');
+          return {
+            status: 200,
+            headers: {
+              'foo': 'bar',
+            },
+            isContinue: false,
+            response,
+          };
+        }
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+
+        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+
+        assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), [
+          {
+            phase: null,
+            status: 200,
+            headers: {
+              'foo': 'bar',
+            },
+            dest: '/foo/bar',
+            middlewareResponse: response,
+            isDestUrl: false,
+            isCheck: false,
+            matchedEntries: [
+              {
+                phase: null,
+                src: '/foo/bar',
+                route: routes[0],
+                routeIndex: 0,
+                isContinue: false,
+                status: 200,
+                headers: {
+                  'foo': {
+                    originalValue: 'bar',
+                    finalValue: 'bar',
+                  },
+                },
+                requestHeaders: undefined,
+                dest: undefined,
+                middlewarePath: 'middleware-id',
+                middlewareResponse: response,
+                isDestUrl: false,
+                isCheck: false,
+              },
+            ],
+            matchedRoute: routes[0],
+          }
+        ]);
+        assert.strictEqual(routerResult.status, undefined);
+        assert.deepStrictEqual(routerResult.headers, {
+          'foo': 'bar',
+        });
+        assert.strictEqual(routerResult.dest, '/foo/bar');
+        assert.strictEqual(routerResult.type, 'middleware');
+        assert.strictEqual(routerResult.middlewareResponse, response);
+      });
+
+      it('proxy result', async function () {
+        const routes = [
+          {
+            src: '^/foo/bar$',
+            dest: 'https://www.example.com/baz'
+          }
+        ];
+        const routesCollection = new RoutesCollection(routes);
+        const routeMatcher = new RouteMatcher(routesCollection);
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+
+        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+
+        assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), [
+          {
+            phase: null,
+            dest: 'https://www.example.com/baz',
+            isDestUrl: true,
+            isCheck: false,
+            matchedEntries: [
+              {
+                phase: null,
+                src: '/foo/bar',
+                route: routes[0],
+                routeIndex: 0,
+                isContinue: false,
+                status: undefined,
+                headers: undefined,
+                requestHeaders: undefined,
+                dest: {
+                  originalValue: 'https://www.example.com/baz',
+                  finalValue: 'https://www.example.com/baz',
+                },
+                middlewarePath: undefined,
+                middlewareResponse: undefined,
+                isDestUrl: true,
+                isCheck: false,
+              },
+            ],
+            matchedRoute: routes[0],
+          }
+        ]);
+        assert.strictEqual(routerResult.status, undefined);
+        assert.deepStrictEqual(routerResult.headers, {});
+        assert.strictEqual(routerResult.dest, 'https://www.example.com/baz');
+        assert.strictEqual(routerResult.type, 'proxy');
       });
     });
 
@@ -237,15 +382,15 @@ describe('routing/RouteMatcher', function () {
 
         const routes: Route[] = [
           {
-            src: '^/foo/$',
-            dest: '/bar/',
+            src: '^/foo$',
+            dest: '/bar',
           },
           {
             handle: 'filesystem'
           },
           {
-            src: '^/foo/$',
-            dest: '/baz/',
+            src: '^/foo$',
+            dest: '/baz',
           },
           {
             src: '^/baz/$',
@@ -258,7 +403,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(routes);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/')
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes('filesystem', routeMatcherContext);
 
@@ -266,14 +411,14 @@ describe('routing/RouteMatcher', function () {
         assert.deepStrictEqual(phaseRoutesResult.status, undefined);
         assert.deepStrictEqual(phaseRoutesResult.requestHeaders, undefined);
         assert.deepStrictEqual(phaseRoutesResult.headers, undefined);
-        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz/');
+        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz');
         assert.deepStrictEqual(phaseRoutesResult.middlewareResponse, undefined);
         assert.deepStrictEqual(phaseRoutesResult.isDestUrl, false);
         assert.deepStrictEqual(phaseRoutesResult.isCheck, false);
         assert.deepStrictEqual(phaseRoutesResult.matchedEntries, [
           {
             phase: 'filesystem',
-            src: '/foo/',
+            src: '/foo',
             route: routes[2],
             routeIndex: 0,
             isContinue: false,
@@ -281,9 +426,8 @@ describe('routing/RouteMatcher', function () {
             headers: undefined,
             requestHeaders: undefined,
             dest: {
-              originalValue: '/baz/',
-              finalValue: '/baz/',
-              replacementTokens: undefined,
+              originalValue: '/baz',
+              finalValue: '/baz',
             },
             middlewarePath: undefined,
             middlewareResponse: undefined,
@@ -298,19 +442,19 @@ describe('routing/RouteMatcher', function () {
 
         const routes: Route[] = [
           {
-            src: '^/foo/$',
-            dest: '/bar/',
+            src: '^/foo$',
+            dest: '/bar',
           },
           {
             handle: 'filesystem'
           },
           {
-            src: '^/foo/$',
-            dest: '/baz/',
+            src: '^/foo$',
+            dest: '/baz',
             continue: true,
           },
           {
-            src: '^/(.*?)/?$',
+            src: '^/(.*)$',
             headers: {
               'hoge': '$1',
             },
@@ -320,7 +464,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(routes);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/')
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes('filesystem', routeMatcherContext);
 
@@ -330,14 +474,14 @@ describe('routing/RouteMatcher', function () {
         assert.deepStrictEqual(phaseRoutesResult.headers, {
           'hoge': 'baz'
         });
-        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz/');
+        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz');
         assert.deepStrictEqual(phaseRoutesResult.middlewareResponse, undefined);
         assert.deepStrictEqual(phaseRoutesResult.isDestUrl, false);
         assert.deepStrictEqual(phaseRoutesResult.isCheck, false);
         assert.deepStrictEqual(phaseRoutesResult.matchedEntries, [
           {
             phase: 'filesystem',
-            src: '/foo/',
+            src: '/foo',
             route: routes[2],
             routeIndex: 0,
             isContinue: true,
@@ -345,9 +489,8 @@ describe('routing/RouteMatcher', function () {
             headers: undefined,
             requestHeaders: undefined,
             dest: {
-              originalValue: '/baz/',
-              finalValue: '/baz/',
-              replacementTokens: undefined,
+              originalValue: '/baz',
+              finalValue: '/baz',
             },
             middlewarePath: undefined,
             middlewareResponse: undefined,
@@ -356,7 +499,7 @@ describe('routing/RouteMatcher', function () {
           },
           {
             phase: 'filesystem',
-            src: '/baz/',
+            src: '/baz',
             route: routes[3],
             routeIndex: 1,
             isContinue: false,
@@ -385,15 +528,15 @@ describe('routing/RouteMatcher', function () {
 
         const routes: Route[] = [
           {
-            src: '^/foo/$',
-            dest: '/bar/',
+            src: '^/foo$',
+            dest: '/bar',
           },
           {
             handle: 'filesystem'
           },
           {
-            src: '^/foo/$',
-            dest: '/baz/',
+            src: '^/foo$',
+            dest: '/baz',
             continue: true,
           },
         ];
@@ -401,7 +544,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(routes);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/')
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes('filesystem', routeMatcherContext);
 
@@ -409,14 +552,14 @@ describe('routing/RouteMatcher', function () {
         assert.deepStrictEqual(phaseRoutesResult.status, undefined);
         assert.deepStrictEqual(phaseRoutesResult.requestHeaders, undefined);
         assert.deepStrictEqual(phaseRoutesResult.headers, undefined);
-        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz/');
+        assert.deepStrictEqual(phaseRoutesResult.dest, '/baz');
         assert.deepStrictEqual(phaseRoutesResult.middlewareResponse, undefined);
         assert.deepStrictEqual(phaseRoutesResult.isDestUrl, false);
         assert.deepStrictEqual(phaseRoutesResult.isCheck, false);
         assert.deepStrictEqual(phaseRoutesResult.matchedEntries, [
           {
             phase: 'filesystem',
-            src: '/foo/',
+            src: '/foo',
             route: routes[2],
             routeIndex: 0,
             isContinue: true,
@@ -424,9 +567,8 @@ describe('routing/RouteMatcher', function () {
             headers: undefined,
             requestHeaders: undefined,
             dest: {
-              originalValue: '/baz/',
-              finalValue: '/baz/',
-              replacementTokens: undefined,
+              originalValue: '/baz',
+              finalValue: '/baz',
             },
             middlewarePath: undefined,
             middlewareResponse: undefined,
