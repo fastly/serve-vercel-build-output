@@ -1,6 +1,6 @@
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
 import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import { resolveRouteParameters, RouteSrcMatcher, RouteSrcMatchResult} from "../routing/RouteSrcMatcher";
+import { RouteSrcMatcher, RouteSrcMatchResult } from "../routing/RouteSrcMatcher";
 import { HasFieldEntry } from "../types/server";
 import {
   HttpHeadersConfig,
@@ -273,4 +273,53 @@ export async function matchRoute(
     middlewarePath,
     middlewareResponse,
   };
+}
+
+export function resolveRouteParameters(
+  str: string,
+  match: string[],
+  keys: string[]
+): ValuesAndReplacements {
+  const finalValue = str.replace(/\$([1-9a-zA-Z]+)/g, (_, param) => {
+    let matchIndex: number = keys.indexOf(param);
+    if (matchIndex === -1) {
+      // It's a number match, not a named capture
+      matchIndex = parseInt(param, 10);
+    } else {
+      // For named captures, add one to the `keys` index to
+      // match up with the RegExp group matches
+      matchIndex++;
+    }
+    return match[matchIndex] || '';
+  });
+
+  const replacementTokens: Record<string, string> = {};
+  for (const [index, key] of keys.entries()) {
+    replacementTokens[`$${key}`] = match[index+1] ?? '';
+  }
+  for (const [index, value] of match.entries()) {
+    replacementTokens[`$${index}`] = value;
+  }
+
+  return {
+    originalValue: str,
+    replacementTokens,
+    finalValue,
+  };
+}
+
+export function flattenValuesAndReplacements(
+  valuesAndReplacements: ValuesAndReplacements,
+) {
+  return valuesAndReplacements.finalValue;
+}
+
+export function flattenValuesAndReplacementsObject(
+  valuesAndReplacementsObject: Record<string, ValuesAndReplacements>,
+) {
+  const resultObject: Record<string, string> = {};
+  for (const [key, value] of Object.entries(valuesAndReplacementsObject)) {
+    resultObject[key] = flattenValuesAndReplacements(value);
+  }
+  return resultObject;
 }
