@@ -1,13 +1,10 @@
 import PCRE from "pcre-to-regexp";
 import { isHandler, Route, RouteWithSrc } from "@vercel/routing-utils";
-import { ValuesAndReplacements } from "../types/routing";
 
-export type RegExpAndKeys = {
+type RegExpAndKeys = {
   matcher: RegExp,
   keys: string[],
 };
-
-export type RouteSrcMatchResult = Exclude<ReturnType<typeof RouteSrcMatcher['exec']>, null>;
 
 export class RouteSrcMatcher {
 

@@ -1,6 +1,6 @@
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
 import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import { RouteSrcMatcher, RouteSrcMatchResult } from "../routing/RouteSrcMatcher";
+import { RouteSrcMatcher } from "../routing/RouteSrcMatcher";
 import { HasFieldEntry } from "../types/server";
 import {
   HttpHeadersConfig,
@@ -11,7 +11,7 @@ import {
 } from "../types/routing";
 import { formatQueryString, parseQueryString } from "./query";
 
-export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext): RouteSrcMatchResult | false {
+export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext) {
 
   const { methods, has, missing } = route;
 
@@ -170,8 +170,6 @@ export function applyRouteResults(
 export function isURL(str: any): boolean {
   return typeof str === 'string' && /^https?:\/\//.test(str);
 }
-
-
 
 /**
  * matchRoute

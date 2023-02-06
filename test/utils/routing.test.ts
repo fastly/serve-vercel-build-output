@@ -54,15 +54,13 @@ describe('utils/routing', function() {
           dest: '/$nextLocale/routing/dynamic/catchall/[...args]?args=$args'
         };
 
-        let result;
-        result = testRoute(route, RouteMatcherContext.fromUrl( 'https://www.example.com/foo/' ));
-        assert.ok(!result);
+        let result1 = testRoute(route, RouteMatcherContext.fromUrl( 'https://www.example.com/foo/' ));
+        assert.ok(!result1);
 
+        const result2 = testRoute(route, RouteMatcherContext.fromUrl( 'https://www.example.com/fr/routing/dynamic/catchall/foo' ));
+        assert.ok(result2);
 
-        result = testRoute(route, RouteMatcherContext.fromUrl( 'https://www.example.com/fr/routing/dynamic/catchall/foo' ));
-        assert.ok(result);
-
-        const { keys, match } = result;
+        const { keys, match } = result2;
         const valuesAndReplacements = resolveRouteParameters(route.dest!, match, keys);
         assert.strictEqual(valuesAndReplacements.finalValue, '/fr/routing/dynamic/catchall/[...args]?args=foo');
       });
