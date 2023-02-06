@@ -1,6 +1,8 @@
+// noinspection DuplicatedCode
+
 import * as assert from 'assert';
 
-import { defaultRequestBuilder, RouteMatcherContext } from '../../src/routing/RouteMatcherContext';
+import RouteMatcherContext, { defaultRequestBuilder } from '../../src/routing/RouteMatcherContext';
 import { headersToObject } from "../../src/utils/query";
 
 const decoder = new TextDecoder();

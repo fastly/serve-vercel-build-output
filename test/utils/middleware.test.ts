@@ -1,3 +1,5 @@
+// noinspection DuplicatedCode
+
 import * as assert from 'assert';
 
 import { processMiddlewareResponse } from "../../src/utils/middleware";

@@ -3,6 +3,7 @@
 import * as assert from "assert";
 
 import { RouteWithSrc } from "@vercel/routing-utils";
+
 import {
   resolveRouteParameters,
   flattenValuesAndReplacements,
@@ -11,7 +12,7 @@ import {
   matchRoute,
   testRoute,
 } from "../../src/utils/routing";
-import { RouteMatcherContext } from "../../src/routing/RouteMatcherContext";
+import RouteMatcherContext from "../../src/routing/RouteMatcherContext";
 
 describe('utils/routing', function() {
   describe('resolveRouteParameters', function () {

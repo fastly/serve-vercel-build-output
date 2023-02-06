@@ -1,4 +1,4 @@
-import { TemplateEngine } from "./TemplateEngine";
+import TemplateEngine from "./TemplateEngine";
 
 // All known template names
 // TODO(?): enumerate from file system
@@ -6,7 +6,7 @@ const TEMPLATE_NAMES = [
   'redirect',
 ];
 
-export class VercelBuildOutputTemplateEngine extends TemplateEngine {
+export default class VercelBuildOutputTemplateEngine extends TemplateEngine {
 
   constructor(
     modulePath: string = './node_modules/@fastly/serve-vercel-build-output',

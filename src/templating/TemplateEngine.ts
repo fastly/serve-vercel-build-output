@@ -1,7 +1,7 @@
 import { includeBytes } from 'fastly:experimental';
 import dot from 'dot';
 
-export class TemplateEngine {
+export default class TemplateEngine {
 
   _templates: Record<string, (inputs: any) => string>;
   _decoder: TextDecoder;

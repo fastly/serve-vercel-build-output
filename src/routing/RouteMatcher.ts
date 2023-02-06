@@ -1,6 +1,6 @@
 import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
-import { RoutesCollection } from "./RoutesCollection";
-import { RouteMatcherContext } from "./RouteMatcherContext";
+import RoutesCollection from "./RoutesCollection";
+import RouteMatcherContext from "./RouteMatcherContext";
 import {
   HttpHeadersConfig, MiddlewareHandler, MiddlewareResponse,
   PhaseResult,

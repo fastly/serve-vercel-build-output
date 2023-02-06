@@ -1,6 +1,6 @@
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
-import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import { RouteSrcMatcher } from "../routing/RouteSrcMatcher";
+import RouteMatcherContext from "../routing/RouteMatcherContext";
+import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import { HasFieldEntry } from "../types/server";
 import {
   HttpHeadersConfig,

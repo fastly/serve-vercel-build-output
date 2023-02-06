@@ -1,12 +1,12 @@
 import { AssetsMap } from "@fastly/compute-js-static-publish";
 import { PathOverride } from "../types/config";
-import { AssetBase } from "./AssetBase";
-import { StaticBinaryAsset } from "./StaticBinaryAsset";
-import { StaticStringAsset } from "./StaticStringAsset";
-import { FunctionAsset, VercelFunctionConfig } from "./FunctionAsset";
-import { StaticAsset } from "./StaticAsset";
+import AssetBase from "./AssetBase";
+import StaticBinaryAsset from "./StaticBinaryAsset";
+import StaticStringAsset from "./StaticStringAsset";
+import FunctionAsset, { VercelFunctionConfig } from "./FunctionAsset";
+import StaticAsset from "./StaticAsset";
 
-export class AssetsCollection {
+export default class AssetsCollection {
 
   assets: Record<string, AssetBase>;
 

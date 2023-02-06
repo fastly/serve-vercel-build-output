@@ -4,8 +4,8 @@ import * as assert from 'assert';
 
 import { Route } from "@vercel/routing-utils";
 
-import { RoutesCollection } from "../../src/routing/RoutesCollection";
-import { RouteMatcherContext } from "../../src/routing/RouteMatcherContext";
+import RoutesCollection from "../../src/routing/RoutesCollection";
+import RouteMatcherContext from "../../src/routing/RouteMatcherContext";
 import RouteMatcher from "../../src/routing/RouteMatcher";
 
 describe('routing/RouteMatcher', function () {
@@ -185,7 +185,7 @@ describe('routing/RouteMatcher', function () {
       // TODO: tests
     });
 
-    describe.only('doPhaseRoutes', function () {
+    describe('doPhaseRoutes', function () {
 
       it('empty', async function() {
 

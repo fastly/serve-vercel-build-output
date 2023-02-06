@@ -6,7 +6,7 @@ type RegExpAndKeys = {
   keys: string[],
 };
 
-export class RouteSrcMatcher {
+export default class RouteSrcMatcher {
 
   static routeSrcToRegExpAndKeys: Map<string, RegExpAndKeys> = new Map<string, RegExpAndKeys>();
 

@@ -1,5 +1,5 @@
 import cookie from 'cookie';
-import { formatQueryString, headersToObject, parseQueryString } from "../utils";
+import { formatQueryString, headersToObject, parseQueryString } from "../utils/query";
 import { HttpHeadersConfig, Query } from "../types/routing";
 
 export class RouteMatcherCookiesMap extends Map<string, string> {
@@ -39,7 +39,7 @@ export function defaultRequestBuilder(input: URL | RequestInfo, init?: RequestIn
   return new Request(input, init);
 }
 
-export class RouteMatcherContext {
+export default class RouteMatcherContext {
 
   method: string;
 

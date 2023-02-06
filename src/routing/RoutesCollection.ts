@@ -21,7 +21,7 @@ function getRoutesTypes(routes: Route[]) {
   return handleMap;
 }
 
-export class RoutesCollection {
+export default class RoutesCollection {
 
   handleMap: Map<PhaseName, Route[]>;
 

@@ -1,7 +1,7 @@
 import { Asset } from "@fastly/compute-js-static-publish";
-import { AssetBase } from "./AssetBase";
+import AssetBase from "./AssetBase";
 
-export class StaticAsset extends AssetBase {
+export default class StaticAsset extends AssetBase {
   type: "string" | "binary";
 
   contentType: string;

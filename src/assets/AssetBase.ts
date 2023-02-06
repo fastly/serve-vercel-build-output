@@ -1,4 +1,4 @@
-export class AssetBase {
+export default class AssetBase {
   key: string;
 
   constructor(key: string) {

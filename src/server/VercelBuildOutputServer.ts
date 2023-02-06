@@ -1,17 +1,17 @@
 import { AssetsMap } from "@fastly/compute-js-static-publish";
 import { HandleValue, normalizeRoutes } from "@vercel/routing-utils";
 import { Config } from "../types/config";
-import { TemplateEngine } from "../templating/TemplateEngine";
-import { VercelBuildOutputTemplateEngine } from "../templating/VercelBuildOutputTemplateEngine";
-import { AssetsCollection } from "../assets/AssetsCollection";
-import { RoutesCollection } from "../routing/RoutesCollection";
-import { RouteSrcMatcher } from "../routing/RouteSrcMatcher";
+import TemplateEngine from "../templating/TemplateEngine";
+import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine";
+import AssetsCollection from "../assets/AssetsCollection";
+import RoutesCollection from "../routing/RoutesCollection";
+import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import { EdgeFunction, ServeRequestContext } from "../types/server";
-import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import { AssetBase } from "../assets/AssetBase";
-import { FunctionAsset } from "../assets/FunctionAsset";
-import { StaticBinaryAsset } from "../assets/StaticBinaryAsset";
-import { StaticStringAsset } from "../assets/StaticStringAsset";
+import RouteMatcherContext from "../routing/RouteMatcherContext";
+import AssetBase from "../assets/AssetBase";
+import FunctionAsset from "../assets/FunctionAsset";
+import StaticBinaryAsset from "../assets/StaticBinaryAsset";
+import StaticStringAsset from "../assets/StaticStringAsset";
 
 type ServerInit = {
   modulePath?: string,

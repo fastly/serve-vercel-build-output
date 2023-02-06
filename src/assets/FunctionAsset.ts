@@ -1,5 +1,5 @@
 import { Asset } from "@fastly/compute-js-static-publish";
-import { AssetBase } from "./AssetBase";
+import AssetBase from "./AssetBase";
 
 export type VercelFunctionConfig = {
   runtime: 'edge',
@@ -10,7 +10,7 @@ export type VercelFunctionConfig = {
   assets: { name: string; path: string }[],
 };
 
-export class FunctionAsset extends AssetBase {
+export default class FunctionAsset extends AssetBase {
   module: any;
 
   vcConfig: VercelFunctionConfig;

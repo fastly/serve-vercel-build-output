@@ -1,5 +1,8 @@
-import { generateRequestId } from "../../src/utils/request";
+// noinspection DuplicatedCode
+
 import * as assert from "assert";
+
+import { generateRequestId } from "../../src/utils/request";
 
 describe('utils/request', function() {
   describe('generateRequestId', function() {

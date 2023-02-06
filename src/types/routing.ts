@@ -1,5 +1,5 @@
 import { HandleValue, Route, RouteWithSrc } from "@vercel/routing-utils";
-import {RouteMatcherContext} from "../routing/RouteMatcherContext";
+import RouteMatcherContext from "../routing/RouteMatcherContext";
 
 export type HttpHeadersConfig = Record<string, string>;
 

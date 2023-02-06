@@ -1,4 +1,7 @@
+// noinspection DuplicatedCode
+
 import * as assert from 'assert';
+
 import { headersToObject } from "../../src/utils/query";
 
 describe('utils/query', function() {
