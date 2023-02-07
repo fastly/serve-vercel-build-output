@@ -32,7 +32,7 @@ export default class RouteMatcher {
   }
 
   async doRouter(routeMatcherContext: RouteMatcherContext) {
-    await this.routeMainLoop(routeMatcherContext);
+    return await this.routeMainLoop(routeMatcherContext);
   }
 
   async checkFilesystem(pathname: string): Promise<boolean> {
@@ -67,6 +67,7 @@ export default class RouteMatcher {
   async routeMainLoop(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
 
     const phaseResults: PhaseRoutesResult[] = [];
+    let status: number | undefined = undefined;
     const headers = await this.initHeaders();
 
     function mergeHeaders(phase: HandleValue | null, phaseHeaders: HttpHeadersConfig | undefined) {
@@ -89,13 +90,16 @@ export default class RouteMatcher {
       phaseResults.push(phaseResult);
 
       mergeHeaders(phase, phaseResult.headers);
+      if (phaseResult.status != null) {
+        status = phaseResult.status;
+      }
 
       if (phaseResult.middlewareResponse != null) {
         // is middleware response
         return {
           phaseResults,
+          status,
           headers,
-          dest: phaseResult.dest,
           middlewareResponse: phaseResult.middlewareResponse,
           type: 'middleware',
         };
@@ -105,6 +109,7 @@ export default class RouteMatcher {
         // is destination URL, we will proxy and be done with it
         return {
           phaseResults,
+          status,
           headers,
           dest: phaseResult.dest,
           type: 'proxy',
@@ -143,6 +148,7 @@ export default class RouteMatcher {
         // serve it and end
         return {
           phaseResults,
+          status,
           headers,
           dest: phaseResult.dest,
           type: 'filesystem',

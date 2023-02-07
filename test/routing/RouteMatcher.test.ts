@@ -202,9 +202,8 @@ describe('routing/RouteMatcher', function () {
         assert.deepStrictEqual(routerResult.headers, {
           'foo': 'bar',
         });
+        assert.ok(routerResult.type === 'error');
         assert.strictEqual(routerResult.dest, '/foo/bar');
-        assert.strictEqual(routerResult.type, 'error');
-        assert.strictEqual(routerResult.middlewareResponse, undefined);
       });
 
       it('filesystem result', async function () {
@@ -221,9 +220,8 @@ describe('routing/RouteMatcher', function () {
         assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), []);
         assert.strictEqual(routerResult.status, undefined);
         assert.deepStrictEqual(routerResult.headers, {});
+        assert.ok(routerResult.type === 'filesystem');
         assert.strictEqual(routerResult.dest, '/foo/bar');
-        assert.strictEqual(routerResult.type, 'filesystem');
-        assert.strictEqual(routerResult.middlewareResponse, undefined);
       });
 
       it('middleware result', async function () {
@@ -296,12 +294,11 @@ describe('routing/RouteMatcher', function () {
             matchedRoute: routes[0],
           }
         ]);
-        assert.strictEqual(routerResult.status, undefined);
+        assert.strictEqual(routerResult.status, 200);
         assert.deepStrictEqual(routerResult.headers, {
           'foo': 'bar',
         });
-        assert.strictEqual(routerResult.dest, '/foo/bar');
-        assert.strictEqual(routerResult.type, 'middleware');
+        assert.ok(routerResult.type === 'middleware');
         assert.strictEqual(routerResult.middlewareResponse, response);
       });
 
@@ -350,8 +347,8 @@ describe('routing/RouteMatcher', function () {
         ]);
         assert.strictEqual(routerResult.status, undefined);
         assert.deepStrictEqual(routerResult.headers, {});
+        assert.ok(routerResult.type === 'proxy');
         assert.strictEqual(routerResult.dest, 'https://www.example.com/baz');
-        assert.strictEqual(routerResult.type, 'proxy');
       });
     });
 

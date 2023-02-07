@@ -92,6 +92,15 @@ export default class RouteMatcherContext {
 
   body: BodyInit | null;
 
+  private _context: any = undefined;
+  getContext<T>(): T {
+    return this._context as T;
+  }
+
+  setContext<T>(value: T) {
+    this._context = value;
+  }
+
   constructor(init: RouteMatcherContextInit) {
 
     this.method = init.method;

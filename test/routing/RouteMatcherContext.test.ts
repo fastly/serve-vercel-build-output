@@ -53,6 +53,7 @@ describe('routing/RouteMatcherContext', function() {
           body,
         });
 
+        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'foo');
         assert.strictEqual(routeMatcherContext.headers, headers);
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
@@ -76,6 +77,7 @@ describe('routing/RouteMatcherContext', function() {
 
         const routeMatcherContext = RouteMatcherContext.fromRequest(request);
 
+        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'POST');
         assert.deepStrictEqual(routeMatcherContext.headers, {
           'foo': 'bar',
@@ -97,6 +99,7 @@ describe('routing/RouteMatcherContext', function() {
 
         const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/');
 
+        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'GET');
         assert.deepStrictEqual(routeMatcherContext.headers, {});
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
@@ -114,6 +117,7 @@ describe('routing/RouteMatcherContext', function() {
           }
         );
 
+        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'POST');
         assert.deepStrictEqual(routeMatcherContext.headers, {});
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
@@ -132,6 +136,7 @@ describe('routing/RouteMatcherContext', function() {
           }
         );
 
+        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'GET');
         assert.deepStrictEqual(routeMatcherContext.headers, { 'foo': 'bar' });
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
@@ -139,39 +144,56 @@ describe('routing/RouteMatcherContext', function() {
 
       });
     });
-  });
-  describe('toRequest', function() {
-    it('default builder', async function () {
 
-      const routeMatcherContext = new RouteMatcherContext({
-        method: 'POST',
-        headers: {
-          'foo': 'bar',
-          'content-type': 'text/plain;charset=UTF-8',
-        },
-        url: 'https://www.example.com/',
-        body: 'baz',
+    describe('context', function() {
+      it('can set context', function() {
+
+        type X = {
+          foo: string;
+        };
+
+        const obj: X = { foo: 'bar' };
+
+        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/');
+        routeMatcherContext.setContext(obj);
+        assert.strictEqual(routeMatcherContext.getContext<X>(), obj);
+
       });
+    });
 
-      const request = routeMatcherContext.toRequest();
+    describe('toRequest', function() {
+      it('default builder', async function () {
 
-      assert.strictEqual(request.method, 'POST');
-      assert.deepStrictEqual(
-        headersToObject(request.headers),
-        {
-          'foo': 'bar',
-          'content-type': 'text/plain;charset=UTF-8',
-        }
-      );
-      assert.strictEqual(request.url, 'https://www.example.com/');
-      assert.ok(request.body instanceof ReadableStream<Uint8Array>);
-      assert.strictEqual(
-        decoder.decode(
-          await streamToArrayBuffer(request.body)
-        ),
-        'baz'
-      );
+        const routeMatcherContext = new RouteMatcherContext({
+          method: 'POST',
+          headers: {
+            'foo': 'bar',
+            'content-type': 'text/plain;charset=UTF-8',
+          },
+          url: 'https://www.example.com/',
+          body: 'baz',
+        });
 
+        const request = routeMatcherContext.toRequest();
+
+        assert.strictEqual(request.method, 'POST');
+        assert.deepStrictEqual(
+          headersToObject(request.headers),
+          {
+            'foo': 'bar',
+            'content-type': 'text/plain;charset=UTF-8',
+          }
+        );
+        assert.strictEqual(request.url, 'https://www.example.com/');
+        assert.ok(request.body instanceof ReadableStream<Uint8Array>);
+        assert.strictEqual(
+          decoder.decode(
+            await streamToArrayBuffer(request.body)
+          ),
+          'baz'
+        );
+
+      });
     });
   });
 });

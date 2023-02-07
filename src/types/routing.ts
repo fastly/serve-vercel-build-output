@@ -84,14 +84,23 @@ export type PhaseRoutesResult = PhaseResult & {
   matchedRoute?: RouteWithSrc;
 }
 
-export type RouterResult = {
+export type RouterResultBase = {
   phaseResults: PhaseRoutesResult[];
   status?: number;
   headers: HttpHeadersConfig;
-  dest: string;
-  type?: 'filesystem' | 'middleware' | 'proxy' | 'error';
-  middlewareResponse?: Response;
 }
+
+export type RouterResultDest = RouterResultBase & {
+  dest: string;
+  type: 'filesystem' | 'proxy' | 'error';
+}
+
+export type RouterResultMiddleware = RouterResultBase & {
+  type: 'middleware';
+  middlewareResponse: Response;
+};
+
+export type RouterResult = RouterResultDest | RouterResultMiddleware;
 
 type PromiseOrValue<T> = Promise<T> | T;
 
