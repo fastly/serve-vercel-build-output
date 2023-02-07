@@ -1,4 +1,4 @@
-import { HandleValue, isHandler, Route } from "@vercel/routing-utils";
+import { HandleValue, isHandler, normalizeRoutes, Route } from "@vercel/routing-utils";
 
 type PhaseName = HandleValue | null;
 
@@ -26,7 +26,14 @@ export default class RoutesCollection {
   handleMap: Map<PhaseName, Route[]>;
 
   constructor(routes: Route[] | null) {
-    this.handleMap = getRoutesTypes(routes ?? []);
+    // validate the config
+    const { routes: normalizedRoutes, error: normalizeError } = normalizeRoutes(routes);
+
+    if(normalizeError != null) {
+      throw normalizeError;
+    }
+
+    this.handleMap = getRoutesTypes(normalizedRoutes ?? []);
   }
 
   getPhaseRoutes(phase: PhaseName) {

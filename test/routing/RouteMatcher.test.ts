@@ -436,7 +436,7 @@ describe('routing/RouteMatcher', function () {
             isCheck: false,
           },
         ]);
-        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[2]);
+        assert.deepStrictEqual(phaseRoutesResult.matchedRoute, routes[2]);
       });
 
       it('continue will continue to next route', async function() {
@@ -522,7 +522,7 @@ describe('routing/RouteMatcher', function () {
             isCheck: false,
           },
         ]);
-        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[3]);
+        assert.deepStrictEqual(phaseRoutesResult.matchedRoute, routes[3]);
       });
 
       it('middleware that returns next', async function() {
@@ -533,7 +533,7 @@ describe('routing/RouteMatcher', function () {
             middlewarePath: 'middleware-id',
           },
           {
-            src: '^/foo',
+            src: '^/foo$',
             dest: '/baz',
           },
         ];
@@ -595,7 +595,7 @@ describe('routing/RouteMatcher', function () {
             isCheck: false,
           },
         ]);
-        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[1]);
+        assert.deepStrictEqual(phaseRoutesResult.matchedRoute, routes[1]);
       });
 
       it('middleware with dest and next', async function() {
@@ -606,7 +606,7 @@ describe('routing/RouteMatcher', function () {
             middlewarePath: 'middleware-id',
           },
           {
-            src: '^/bar',
+            src: '^/bar$',
             dest: '/baz',
           },
         ];
@@ -672,7 +672,7 @@ describe('routing/RouteMatcher', function () {
             isCheck: false,
           },
         ]);
-        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[1]);
+        assert.deepStrictEqual(phaseRoutesResult.matchedRoute, routes[1]);
       });
 
       it('middleware with dest only', async function() {
@@ -731,7 +731,7 @@ describe('routing/RouteMatcher', function () {
             isCheck: false,
           },
         ]);
-        assert.strictEqual(phaseRoutesResult.matchedRoute, routes[0]);
+        assert.deepStrictEqual(phaseRoutesResult.matchedRoute, routes[0]);
       });
 
       it('continue on final route means no match', async function() {

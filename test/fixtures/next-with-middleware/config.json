@@ -1,0 +1,265 @@
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$",
+      "headers": {
+        "Location": "/$1"
+      },
+      "status": 308,
+      "continue": true
+    },
+    {
+      "src": "/_next/__private/trace",
+      "dest": "/404",
+      "status": 404,
+      "continue": true
+    },
+    {
+      "src": "/404/?",
+      "status": 404,
+      "continue": true,
+      "missing": [
+        {
+          "type": "header",
+          "key": "x-prerender-revalidate"
+        }
+      ]
+    },
+    {
+      "src": "/500",
+      "status": 500,
+      "continue": true
+    },
+    {
+      "src": "^\\/about(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?[\\/#\\?]?$",
+      "middlewarePath": "middleware",
+      "continue": true,
+      "override": true
+    },
+    {
+      "src": "^/_next/data/mw\\-__s4qny2b0PNOMm9gu/(.*).json",
+      "dest": "/$1",
+      "override": true,
+      "continue": true,
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ]
+    },
+    {
+      "src": "^/index(?:/)?",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ],
+      "dest": "/",
+      "override": true,
+      "continue": true
+    },
+    {
+      "continue": true,
+      "src": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/about(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
+      "missing": [
+        {
+          "type": "header",
+          "key": "x-prerender-revalidate",
+          "value": "1edc422ff039b170d0eb6a6b29ec2fb7"
+        }
+      ],
+      "middlewarePath": "middleware",
+      "override": true
+    },
+    {
+      "src": "^/$",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ],
+      "dest": "/_next/data/mw-__s4qny2b0PNOMm9gu/index.json",
+      "continue": true,
+      "override": true
+    },
+    {
+      "src": "^/((?!_next/)(?:.*[^/]|.*))/?$",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ],
+      "dest": "/_next/data/mw-__s4qny2b0PNOMm9gu/$1.json",
+      "continue": true,
+      "override": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/_next/data/mw\\-__s4qny2b0PNOMm9gu/(.*).json",
+      "dest": "/$1",
+      "continue": true,
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ]
+    },
+    {
+      "src": "^/index(?:/)?",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ],
+      "dest": "/",
+      "continue": true
+    },
+    {
+      "handle": "resource"
+    },
+    {
+      "src": "/.*",
+      "status": 404
+    },
+    {
+      "handle": "miss"
+    },
+    {
+      "src": "/_next/static/(?:[^/]+/pages|pages|chunks|runtime|css|image|media)/.+",
+      "status": 404,
+      "check": true,
+      "dest": "$0"
+    },
+    {
+      "handle": "rewrite"
+    },
+    {
+      "src": "^/$",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ],
+      "dest": "/_next/data/mw-__s4qny2b0PNOMm9gu/index.json",
+      "continue": true
+    },
+    {
+      "src": "^/((?!_next/)(?:.*[^/]|.*))/?$",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ],
+      "dest": "/_next/data/mw-__s4qny2b0PNOMm9gu/$1.json",
+      "continue": true
+    },
+    {
+      "src": "^/_next/data/mw\\-__s4qny2b0PNOMm9gu/(.*).json",
+      "headers": {
+        "x-nextjs-matched-path": "/$1"
+      },
+      "continue": true,
+      "override": true
+    },
+    {
+      "src": "^/_next/data/mw\\-__s4qny2b0PNOMm9gu/(.*).json",
+      "dest": "__next_data_catchall"
+    },
+    {
+      "handle": "hit"
+    },
+    {
+      "src": "/_next/static/(?:[^/]+/pages|pages|chunks|runtime|css|image|media|mw\\-__s4qny2b0PNOMm9gu)/.+",
+      "headers": {
+        "cache-control": "public,max-age=31536000,immutable"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "src": "/index",
+      "headers": {
+        "x-matched-path": "/"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "src": "/((?!index$).*)",
+      "headers": {
+        "x-matched-path": "/$1"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "handle": "error"
+    },
+    {
+      "src": "/.*",
+      "dest": "/404",
+      "status": 404
+    },
+    {
+      "src": "/.*",
+      "dest": "/500",
+      "status": 500
+    }
+  ],
+  "images": {
+    "domains": [],
+    "sizes": [
+      640,
+      750,
+      828,
+      1080,
+      1200,
+      1920,
+      2048,
+      3840,
+      16,
+      32,
+      48,
+      64,
+      96,
+      128,
+      256,
+      384
+    ],
+    "remotePatterns": [],
+    "minimumCacheTTL": 60,
+    "formats": [
+      "image/webp"
+    ],
+    "dangerouslyAllowSVG": false,
+    "contentSecurityPolicy": "script-src 'none'; frame-src 'none'; sandbox;"
+  },
+  "overrides": {
+    "404.html": {
+      "path": "404",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "500.html": {
+      "path": "500",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "__next_data_catchall.json": {
+      "path": "__next_data_catchall",
+      "contentType": "application/json"
+    }
+  },
+  "framework": {
+    "version": "13.1.1"
+  }
+}

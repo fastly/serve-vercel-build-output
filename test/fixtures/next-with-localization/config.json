@@ -1,0 +1,311 @@
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$",
+      "headers": {
+        "Location": "/$1"
+      },
+      "status": 308,
+      "continue": true
+    },
+    {
+      "src": "^(?!/_next)(?:/(en\\-US|fr|nl\\-NL))/about(?:/)?$",
+      "headers": {
+        "Location": "/$1"
+      },
+      "status": 308,
+      "continue": true
+    },
+    {
+      "src": "/_next/__private/trace",
+      "dest": "/404",
+      "status": 404,
+      "continue": true
+    },
+    {
+      "src": "^/(?!(?:_next/.*|en\\-US|fr|nl\\-NL)(?:/.*|$))(.*)$",
+      "dest": "$wildcard/$1",
+      "continue": true
+    },
+    {
+      "src": "^//?(?:en\\-US|fr|nl\\-NL)?/?$",
+      "locale": {
+        "redirect": {
+          "fr": "https://example.fr/"
+        },
+        "cookie": "NEXT_LOCALE"
+      },
+      "continue": true
+    },
+    {
+      "src": "/",
+      "locale": {
+        "redirect": {
+          "en-US": "/",
+          "fr": "/fr",
+          "nl-NL": "/nl-NL"
+        },
+        "cookie": "NEXT_LOCALE"
+      },
+      "continue": true
+    },
+    {
+      "src": "^/$",
+      "dest": "/en-US",
+      "continue": true
+    },
+    {
+      "src": "^/(?!(?:_next/.*|en\\-US|fr|nl\\-NL)(?:/.*|$))(.*)$",
+      "dest": "/en-US/$1",
+      "continue": true
+    },
+    {
+      "src": "^(?:/(en\\-US|fr|nl\\-NL))/foo(?:/)?$",
+      "headers": {
+        "x-custom-header": "my custom header value"
+      },
+      "continue": true
+    },
+    {
+      "src": "/(?:en\\-US|fr|nl\\-NL)?[/]?404/?",
+      "status": 404,
+      "continue": true,
+      "missing": [
+        {
+          "type": "header",
+          "key": "x-prerender-revalidate"
+        }
+      ]
+    },
+    {
+      "src": "/(?:en\\-US|fr|nl\\-NL)?[/]?500",
+      "status": 500,
+      "continue": true
+    },
+    {
+      "src": "^(?!/_next)/fr/about(?:/)?$",
+      "headers": {
+        "Location": "https://example.fr/"
+      },
+      "status": 308
+    },
+    {
+      "src": "^(?!/_next)/en-US/about(?:/)?$",
+      "headers": {
+        "Location": "/"
+      },
+      "status": 308
+    },
+    {
+      "src": "^(?:/(en\\-US|fr|nl\\-NL))/some-page(?:/)?$",
+      "dest": "/$1/foo",
+      "has": [
+        {
+          "type": "query",
+          "key": "overrideMe"
+        }
+      ],
+      "continue": true,
+      "override": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/_next/data/(.*)",
+      "dest": "/_next/data/$1",
+      "check": true
+    },
+    {
+      "src": "^(?:/(en\\-US|fr|nl\\-NL))/non-existent(?:/)?$",
+      "dest": "/$1/routing/dynamic/simple/1",
+      "check": true
+    },
+    {
+      "handle": "resource"
+    },
+    {
+      "src": "^(?:/(en\\-US|fr|nl\\-NL))/rewrites(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      "dest": "https://httpbin.org/anything/$2",
+      "check": true
+    },
+    {
+      "src": "/.*",
+      "status": 404
+    },
+    {
+      "handle": "miss"
+    },
+    {
+      "src": "/_next/static/(?:[^/]+/pages|pages|chunks|runtime|css|image|media)/.+",
+      "status": 404,
+      "check": true,
+      "dest": "$0"
+    },
+    {
+      "src": "^//?(?:en\\-US|fr|nl\\-NL)/(.*)",
+      "dest": "/$1",
+      "check": true
+    },
+    {
+      "handle": "rewrite"
+    },
+    {
+      "src": "^/_next/data/OHPU5L97XPs\\-Ke199\\-rEO/(?<nextLocale>en\\-US|fr|nl\\-NL)/datafetching/ssr.json$",
+      "dest": "/$nextLocale/datafetching/ssr"
+    },
+    {
+      "src": "/_next/data/(.*)",
+      "dest": "/404",
+      "status": 404
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/api/hello/(?<name>[^/]+?)(?:/)?$",
+      "dest": "/api/hello/[name]?name=$name"
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/datafetching/paths/(?<id>[^/]+?)(?:/)?$",
+      "dest": "/$nextLocale/datafetching/paths/[id]?id=$id"
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/datafetching/paths2/(?<id>[^/]+?)(?:/)?$",
+      "dest": "/$nextLocale/datafetching/paths2/[id]?id=$id"
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/datafetching/paths3/(?<id>[^/]+?)(?:/)?$",
+      "dest": "/$nextLocale/datafetching/paths3/[id]?id=$id"
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/routing/dynamic/catchall/(?<args>.+?)(?:/)?$",
+      "dest": "/$nextLocale/routing/dynamic/catchall/[...args]?args=$args"
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/routing/dynamic/optcatchall(?:/(?<args>.+?))?(?:/)?$",
+      "dest": "/$nextLocale/routing/dynamic/optcatchall/[[...args]]?args=$args"
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/routing/dynamic/simple/(?<id>[^/]+?)(?:/)?$",
+      "dest": "/$nextLocale/routing/dynamic/simple/[id]?id=$id"
+    },
+    {
+      "src": "^[/]?(?<nextLocale>en\\-US|fr|nl\\-NL)?/routing/dynamic/(?<intermediate>[^/]+?)/post(?:/)?$",
+      "dest": "/$nextLocale/routing/dynamic/[intermediate]/post?intermediate=$intermediate"
+    },
+    {
+      "handle": "hit"
+    },
+    {
+      "src": "/_next/static/(?:[^/]+/pages|pages|chunks|runtime|css|image|media|OHPU5L97XPs\\-Ke199\\-rEO)/.+",
+      "headers": {
+        "cache-control": "public,max-age=31536000,immutable"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "src": "/index",
+      "headers": {
+        "x-matched-path": "/"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "src": "/((?!index$).*)",
+      "headers": {
+        "x-matched-path": "/$1"
+      },
+      "continue": true,
+      "important": true
+    },
+    {
+      "handle": "error"
+    },
+    {
+      "src": "/(?<nextLocale>en\\-US|fr|nl\\-NL)(/.*|$)",
+      "dest": "/$nextLocale/404",
+      "status": 404,
+      "caseSensitive": true
+    },
+    {
+      "src": "/.*",
+      "dest": "/en-US/404",
+      "status": 404
+    },
+    {
+      "src": "/(?<nextLocale>en\\-US|fr|nl\\-NL)(/.*|$)",
+      "dest": "/$nextLocale/500",
+      "status": 500,
+      "caseSensitive": true
+    },
+    {
+      "src": "/.*",
+      "dest": "/en-US/500",
+      "status": 500
+    }
+  ],
+  "images": {
+    "domains": [],
+    "sizes": [
+      640,
+      750,
+      828,
+      1080,
+      1200,
+      1920,
+      2048,
+      3840,
+      16,
+      32,
+      48,
+      64,
+      96,
+      128,
+      256,
+      384
+    ],
+    "remotePatterns": [],
+    "minimumCacheTTL": 60,
+    "formats": [
+      "image/webp"
+    ],
+    "dangerouslyAllowSVG": false,
+    "contentSecurityPolicy": "script-src 'none'; frame-src 'none'; sandbox;"
+  },
+  "wildcard": [
+    {
+      "domain": "example.fr",
+      "value": "/fr"
+    }
+  ],
+  "overrides": {
+    "en-US/404.html": {
+      "path": "en-US/404",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "en-US/500.html": {
+      "path": "en-US/500",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "fr/404.html": {
+      "path": "fr/404",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "fr/500.html": {
+      "path": "fr/500",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "nl-NL/404.html": {
+      "path": "nl-NL/404",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "nl-NL/500.html": {
+      "path": "nl-NL/500",
+      "contentType": "text/html; charset=utf-8"
+    }
+  },
+  "framework": {
+    "version": "12.3.4"
+  }
+}

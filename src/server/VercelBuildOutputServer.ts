@@ -32,17 +32,8 @@ export default class VercelBuildOutputServer {
 
     const routes = config.routes ?? [];
 
-    // validate the config
-    const { routes: normalizedRoutes, error: normalizeError } = normalizeRoutes(routes);
-
-    if(normalizeError != null) {
-      throw normalizeError;
-    }
-
-    if (normalizedRoutes != null) {
-      RouteSrcMatcher.init(normalizedRoutes);
-    }
-    this._routesCollection = new RoutesCollection(normalizedRoutes);
+    this._routesCollection = new RoutesCollection(routes);
+    RouteSrcMatcher.init(routes);
 
     this._templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
     this._assetsCollection = new AssetsCollection(init.assets, config.overrides);
