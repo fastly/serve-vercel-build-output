@@ -28,6 +28,7 @@ describe('routing/RoutesCollection', function() {
         ];
         const routesCollection = new RoutesCollection(routes);
 
+        assert.deepStrictEqual(routesCollection.routes, routes);
         assert.deepStrictEqual(routesCollection.getPhaseRoutes(null), [routes[0]]);
         assert.deepStrictEqual(routesCollection.getPhaseRoutes('filesystem'), [routes[2]]);
         assert.deepStrictEqual(routesCollection.getPhaseRoutes('resource'), []);

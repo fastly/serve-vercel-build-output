@@ -229,7 +229,7 @@ export default class RouteMatcher {
         routeIndex,
         route,
         routeMatcherContext,
-        this.doMiddlewareFunction.bind(this)
+        (path, ctx) => this.doMiddlewareFunction(path, ctx),
       );
 
       if(!routeMatchResult) {

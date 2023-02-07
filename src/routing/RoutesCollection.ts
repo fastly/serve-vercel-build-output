@@ -23,7 +23,9 @@ function getRoutesTypes(routes: Route[]) {
 
 export default class RoutesCollection {
 
-  handleMap: Map<PhaseName, Route[]>;
+  readonly routes: Route[];
+
+  readonly handleMap: Map<PhaseName, Route[]>;
 
   constructor(routes: Route[] | null) {
     // validate the config
@@ -33,7 +35,8 @@ export default class RoutesCollection {
       throw normalizeError;
     }
 
-    this.handleMap = getRoutesTypes(normalizedRoutes ?? []);
+    this.routes = normalizedRoutes ?? [];
+    this.handleMap = getRoutesTypes(this.routes);
   }
 
   getPhaseRoutes(phase: PhaseName) {
