@@ -7,11 +7,7 @@
     "target": "es2020",
     "strict": true,
     "allowJs": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationMap": true,
-    "rootDir": ".",
-    "outDir": "build"
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "./src/**/*.ts",
