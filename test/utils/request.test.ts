@@ -1,4 +1,5 @@
 // noinspection DuplicatedCode
+/// <reference types='@fastly/js-compute' />
 
 import * as assert from "assert";
 

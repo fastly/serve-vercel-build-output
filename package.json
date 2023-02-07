@@ -6,8 +6,8 @@
   "types": "./build/src/index.d.ts",
   "scripts": {
     "prepack": "npm run build",
-    "build": "tsc",
-    "test": "nyc ts-mocha -p tsconfig.test.json --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
+    "build": "tsc -p ./tsconfig.build.json",
+    "test": "nyc ts-mocha -p ./tsconfig.json --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
   },
   "repository": {
     "type": "git",
@@ -39,6 +39,7 @@
     "@types/cookie": "^0.5.1",
     "@types/dot": "^1.1.5",
     "@types/mocha": "^10.0.1",
+    "@types/node": "^18.11.19",
     "@types/sinon": "^10.0.13",
     "assert": "^2.0.0",
     "mocha": "^10.2.0",

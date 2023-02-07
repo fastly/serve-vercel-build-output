@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "es2022",
+    "module": "commonjs",
     "lib": ["es2021"],
     "esModuleInterop": true,
     "moduleResolution": "node",
@@ -14,8 +14,8 @@
     "outDir": "build"
   },
   "include": [
-    "src/**/*.ts",
-    "test/**/*.ts"
+    "./src/**/*.ts",
+    "./test/**/+.ts"
   ],
   "exclude": [
     "node_modules"
