@@ -55,8 +55,10 @@
   },
   "files": [
     "build/src/**/*.js",
-    "build/src/**/*.js.map",
-    "build/src/**/*.d.ts",
+    "build/esm/**/*.js",
+    "build/esm/**/*.js.map",
+    "build/esm/**/*.ts.map",
+    "build/esm/**/*.d.ts",
     "resources/**/*",
     "LICENSE",
     "README.md",
