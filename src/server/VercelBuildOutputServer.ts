@@ -5,14 +5,16 @@ import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemp
 import AssetsCollection from "../assets/AssetsCollection";
 import RoutesCollection from "../routing/RoutesCollection";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
+import { RouterResultDest, RouterResultMiddleware } from "../types/routing";
 import { EdgeFunction, ServeRequestContext } from "../types/server";
 import RouteMatcherContext from "../routing/RouteMatcherContext";
-import AssetBase from "../assets/AssetBase";
 import FunctionAsset from "../assets/FunctionAsset";
 import StaticBinaryAsset from "../assets/StaticBinaryAsset";
 import StaticStringAsset from "../assets/StaticStringAsset";
 import RouteMatcher from "../routing/RouteMatcher";
 import { processMiddlewareResponse } from "../utils/middleware";
+import ILogger from "../logging/ILogger";
+import { headersToObject } from "../utils/query";
 
 type ServerInit = {
   modulePath?: string,
@@ -28,7 +30,12 @@ export default class VercelBuildOutputServer {
 
   _routeMatcher: RouteMatcher;
 
-  constructor(init: ServerInit) {
+  _logger?: ILogger;
+
+  constructor(
+    init: ServerInit,
+    logger?: ILogger
+  ) {
     const config = init.config;
 
     const routes = config.routes ?? [];
@@ -42,12 +49,13 @@ export default class VercelBuildOutputServer {
     this._routeMatcher.onMiddleware =
       (middlewarePath, routeMatcherContext) => this.onMiddleware(middlewarePath, routeMatcherContext);
 
-
     this._templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
     this._assetsCollection = new AssetsCollection(init.assets, config.overrides);
+
+    this._logger = logger;
   }
 
-  async serveRequest(
+  public async serveRequest(
     request: Request,
     context: ServeRequestContext,
   ): Promise<Response> {
@@ -55,59 +63,68 @@ export default class VercelBuildOutputServer {
     const routeMatcherContext = RouteMatcherContext.fromRequest(request);
     routeMatcherContext.setContext(context);
 
-    const routeMatchResult = await this._routeMatcher.doRouter(routeMatcherContext);
+    this._logger?.debug('routeMatcherContext', {
+      method: routeMatcherContext.method,
+      host: routeMatcherContext.host,
+      pathname: routeMatcherContext.pathname,
+      headers: routeMatcherContext.headers,
+      query: routeMatcherContext.query,
+    });
 
+    this._logger?.info('calling router');
+    const routeMatchResult = await this._routeMatcher.doRouter(routeMatcherContext);
+    this._logger?.info('returned from router');
+
+    this._logger?.debug('routeMatchResult', routeMatchResult);
+
+    this._logger?.info('routeMatchResult.type', routeMatchResult.type);
     if (routeMatchResult.type === 'middleware') {
-      return routeMatchResult.middlewareResponse;
+      return this.serveMiddlewareResponse(routeMatchResult);
     }
 
     if (routeMatchResult.type === 'proxy') {
-      // TODO: proxy this to backend
-      return new Response('proxy to ' + routeMatchResult.dest, { 'headers': { 'content-type': 'text/plain' }});
+      return this.serveProxyResponse(routeMatchResult);
     }
 
     if (routeMatchResult.type === 'filesystem') {
-      const pathname = routeMatchResult.dest;
-      const assetName = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-
-      const request = routeMatcherContext.toRequest();
-      // TODO: upgrade this to NextRequest
-      const context = routeMatcherContext.getContext<ServeRequestContext>();
-
-      return this.invokeAsset(this._assetsCollection.getAsset(assetName), request, context);
+      return this.serveFilesystem(routeMatchResult, routeMatcherContext);
     }
 
-    console.log(routeMatchResult);
-
-    return new Response('error', { 'headers': { 'content-type': 'text/plain' }});
+    return this.serveErrorResponse();
   }
 
-  onCheckFilesystem(pathname: string) {
+  private serveMiddlewareResponse(routeMatchResult: RouterResultMiddleware) {
+    this._logger?.debug('Serving response from middleware');
+    this._logger?.debug({
+      status: routeMatchResult.middlewareResponse.status,
+      headers: headersToObject(routeMatchResult.middlewareResponse.headers),
+    });
+
+    return routeMatchResult.middlewareResponse;
+  }
+
+  private serveProxyResponse(routeMatchResult: RouterResultDest) {
+    this._logger?.debug('Serving proxy response');
+    this._logger?.warn('TODO: To proxying to backend ' + routeMatchResult.dest);
+    // TODO: proxy this to backend
+    return new Response('proxy to ' + routeMatchResult.dest, {'headers': {'content-type': 'text/plain'}});
+  }
+
+  private serveFilesystem(routeMatchResult: RouterResultDest, routeMatcherContext: RouteMatcherContext) {
+    const pathname = routeMatchResult.dest;
     const assetName = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-    return this._assetsCollection.getAsset(assetName) != null;
-  }
-
-  async onMiddleware(middlewarePath: string, routeMatcherContext: RouteMatcherContext) {
-    const asset = this._assetsCollection.getAsset(middlewarePath);
-    if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
-      // not found (or wasn't a edge function)
-      // TODO: should probably find a way to return an error.
-      return {
-        isContinue: true,
-      };
-    }
 
     const request = routeMatcherContext.toRequest();
     // TODO: upgrade this to NextRequest
     const context = routeMatcherContext.getContext<ServeRequestContext>();
 
-    const func = asset.module.default as EdgeFunction;
-    const response = await func(request, context);
+    this._logger?.debug('Serving from filesystem');
+    this._logger?.debug({
+      dest: routeMatchResult.dest,
+      assetName,
+    });
 
-    return processMiddlewareResponse(response);
-  }
-
-  invokeAsset(asset: AssetBase | null, request: Request, context: ServeRequestContext) {
+    const asset = this._assetsCollection.getAsset(assetName);
     if (asset instanceof FunctionAsset) {
       const func = asset.module.default as EdgeFunction;
       return func(request, context);
@@ -123,4 +140,37 @@ export default class VercelBuildOutputServer {
     throw new Error('asset');
   }
 
+  private serveErrorResponse() {
+    this._logger?.debug('Error response');
+
+    return new Response('error', { 'headers': { 'content-type': 'text/plain' }});
+  }
+
+  onCheckFilesystem(pathname: string) {
+    const assetName = pathname.startsWith('/') ? pathname.slice(1) : pathname;
+    return this._assetsCollection.getAsset(assetName) != null;
+  }
+
+  async onMiddleware(middlewarePath: string, routeMatcherContext: RouteMatcherContext) {
+    const asset = this._assetsCollection.getAsset(middlewarePath);
+    if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
+      // not found (or wasn't a edge function)
+      // TODO: should probably find a way to return an error.
+
+      this._logger?.warn('Middleware ' + middlewarePath + ' not found (or not edge function), performing no-op');
+
+      return {
+        isContinue: true,
+      };
+    }
+
+    const request = routeMatcherContext.toRequest();
+    // TODO: upgrade this to NextRequest
+    const context = routeMatcherContext.getContext<ServeRequestContext>();
+
+    const func = asset.module.default as EdgeFunction;
+    const response = await func(request, context);
+
+    return processMiddlewareResponse(response);
+  }
 }
