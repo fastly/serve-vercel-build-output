@@ -15,6 +15,7 @@ import RouteMatcher from "../routing/RouteMatcher";
 import { processMiddlewareResponse } from "../utils/middleware";
 import ILogger from "../logging/ILogger";
 import { headersToObject } from "../utils/query";
+import ILoggerProvider from "../logging/ILoggerProvider";
 
 type ServerInit = {
   modulePath?: string,
@@ -34,7 +35,7 @@ export default class VercelBuildOutputServer {
 
   constructor(
     init: ServerInit,
-    logger?: ILogger
+    loggerProvider?: ILoggerProvider
   ) {
     const config = init.config;
 
@@ -43,7 +44,7 @@ export default class VercelBuildOutputServer {
     const routesCollection = new RoutesCollection(routes);
     RouteSrcMatcher.init(routesCollection.routes);
 
-    this._routeMatcher = new RouteMatcher(routesCollection);
+    this._routeMatcher = new RouteMatcher(routesCollection, loggerProvider);
     this._routeMatcher.onCheckFilesystem =
       (pathname) => this.onCheckFilesystem(pathname);
     this._routeMatcher.onMiddleware =
@@ -52,7 +53,7 @@ export default class VercelBuildOutputServer {
     this._templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
     this._assetsCollection = new AssetsCollection(init.assets, config.overrides);
 
-    this._logger = logger;
+    this._logger = loggerProvider?.getLogger(this.constructor.name);
   }
 
   public async serveRequest(

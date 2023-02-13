@@ -9,6 +9,8 @@ import {
   RouterResult,
 } from "../types/routing";
 import { applyRouteResults, matchRoute } from "../utils/routing";
+import ILogger from "../logging/ILogger";
+import ILoggerProvider from "../logging/ILoggerProvider";
 
 type PromiseOrValue<T> = Promise<T> | T;
 
@@ -21,14 +23,20 @@ export default class RouteMatcher {
 
   _routesCollection: RoutesCollection;
 
+  _logger?: ILogger;
+
   onCheckFilesystem?: CheckFilesystemHandler;
 
   onMiddleware?: MiddlewareHandler;
 
   onInitHeaders?: InitHeadersHandler;
 
-  constructor(routesCollection: RoutesCollection) {
+  constructor(
+    routesCollection: RoutesCollection,
+    loggerProvider?: ILoggerProvider
+  ) {
     this._routesCollection = routesCollection;
+    this._logger = loggerProvider?.getLogger(this.constructor.name);
   }
 
   async doRouter(routeMatcherContext: RouteMatcherContext) {
