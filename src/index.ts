@@ -6,6 +6,7 @@
 /// <reference types='@fastly/js-compute' />
 
 export * from './logging/index';
+export * from './utils/index';
 
 import VercelBuildOutputServer from './server/VercelBuildOutputServer';
 
