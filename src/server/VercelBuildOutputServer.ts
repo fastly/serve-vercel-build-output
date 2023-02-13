@@ -64,6 +64,9 @@ export default class VercelBuildOutputServer {
     const routeMatcherContext = RouteMatcherContext.fromRequest(request);
     routeMatcherContext.setContext(context);
 
+    this._logger?.debug('context', {
+      requestId: context.requestId,
+    });
     this._logger?.debug('routeMatcherContext', {
       method: routeMatcherContext.method,
       host: routeMatcherContext.host,
