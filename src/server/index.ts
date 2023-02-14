@@ -1,4 +1,5 @@
-import VercelBuildOutputServer, { BackendDef, BackendsDefs, Backends, ServerInit } from "./VercelBuildOutputServer";
+import { BackendDef, Backends, BackendsDefs } from "./types";
+import VercelBuildOutputServer, { ServerInit } from "./VercelBuildOutputServer";
 
 export {
   BackendDef,

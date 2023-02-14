@@ -1,7 +1,6 @@
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
 import RouteMatcherContext from "../routing/RouteMatcherContext";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
-import { HasFieldEntry } from "../types/server";
 import {
   HttpHeadersConfig,
   MiddlewareHandler,
@@ -10,6 +9,8 @@ import {
   ValuesAndReplacements
 } from "../types/routing";
 import { formatQueryString, parseQueryString } from "./query";
+
+type HasFieldEntry = NonNullable<RouteWithSrc['has']>[number];
 
 export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext) {
 

@@ -6,7 +6,7 @@ import AssetsCollection from "../assets/AssetsCollection";
 import RoutesCollection from "../routing/RoutesCollection";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import { RouterResultDest, RouterResultMiddleware } from "../types/routing";
-import { EdgeFunction, ServeRequestContext } from "../types/server";
+import { Backends, BackendsDefs, EdgeFunction, ServeRequestContext } from "./types";
 import RouteMatcherContext from "../routing/RouteMatcherContext";
 import FunctionAsset from "../assets/FunctionAsset";
 import StaticBinaryAsset from "../assets/StaticBinaryAsset";
@@ -16,19 +16,13 @@ import { processMiddlewareResponse } from "../utils/middleware";
 import ILogger from "../logging/ILogger";
 import { headersToObject } from "../utils/query";
 import ILoggerProvider from "../logging/ILoggerProvider";
-
-export type BackendDef = {
-  url: string,
-};
-
-export type BackendsDefs = 'dynamic' | Record<string, string | BackendDef>;
-export type Backends = 'dynamic' | Record<string, BackendDef>;
+import { getBackendInfo } from "../utils/backends";
 
 export type ServerInit = {
   modulePath?: string,
   assets: AssetsMap,
   config: Config,
-  backendDefs?: BackendsDefs,
+  backends?: BackendsDefs,
 };
 
 export default class VercelBuildOutputServer {
@@ -39,7 +33,7 @@ export default class VercelBuildOutputServer {
 
   _routeMatcher: RouteMatcher;
 
-  _backends: Backends;
+  _backends: Backends | 'dynamic';
 
   _logger?: ILogger;
 
@@ -64,10 +58,10 @@ export default class VercelBuildOutputServer {
     this._assetsCollection = new AssetsCollection(init.assets, config.overrides);
 
     this._backends = {};
-    if (init.backendDefs === 'dynamic') {
+    if (init.backends === 'dynamic') {
       this._backends = 'dynamic';
-    } else if (init.backendDefs != null) {
-      for (const [key, def] of Object.entries(init.backendDefs)) {
+    } else if (init.backends != null) {
+      for (const [key, def] of Object.entries(init.backends)) {
         let backend = def;
         if (typeof backend === 'string') {
           backend = {
@@ -136,6 +130,8 @@ export default class VercelBuildOutputServer {
     this._logger?.debug('Serving proxy response');
     this._logger?.warn('TODO: To proxying to backend ' + routeMatchResult.dest);
 
+    const headers = Object.assign({}, routeMatcherContext.headers);
+
     const requestInit: RequestInit = {
       headers: new Headers(routeMatcherContext.headers),
     };
@@ -145,20 +141,46 @@ export default class VercelBuildOutputServer {
       requestInit.body = routeMatcherContext.body;
     }
 
-    if (this._backends !== 'dynamic') {
+    // rewrite host
+    headers['host'] = new URL(routeMatchResult.dest).host;
 
-      let backend: string | undefined;
-      for (const [key, value] of Object.entries(this._backends)) {
-        if (routeMatchResult.dest.startsWith(value.url)) {
-          backend = key;
-          break;
-        }
+    // XFF
+    const url = routeMatcherContext.url;
+    const port = url.port || '443';       // C@E can only be on 443, except when running locally
+    const proto = 'https';                // C@E can only be accessed via HTTPS
+
+    const requestContext = routeMatcherContext.getContext<ServeRequestContext>();
+
+    const values: Record<string, string> = {
+      for: requestContext.client.address,
+      port,
+      proto,
+    };
+
+    ['for', 'port', 'proto'].forEach(function(header) {
+      const arr: string[] = [];
+      let strs = headers['x-forwarded-' + header];
+      if(Array.isArray(strs)) {
+        strs = strs.join(',');
       }
+      if(strs) {
+        arr.push(strs);
+      }
+      arr.push(values[header]);
+      headers['x-forwarded-' + header] = arr.join(',');
+    });
 
-      if (backend == null) {
+    if (this._backends !== 'dynamic') {
+      const backendInfo = getBackendInfo(this._backends, routeMatchResult.dest);
+
+      if (backendInfo == null) {
         this._logger?.warn('Proxying to ' + routeMatchResult.dest + ' may fail as it does not match a defined backend.');
       } else {
-        requestInit.backend = backend;
+        requestInit.backend = backendInfo.name;
+
+        // rewrite host to that of backend
+        // TODO: maybe make this configurable?
+        headers['host'] = new URL(backendInfo.url).host;
       }
     }
 
