@@ -55,7 +55,14 @@ export default class AssetsCollection {
           continue;
         }
 
-        this.assets[vcConfig.name] = new FunctionAsset(vcConfig.name, functionAsset, vcConfig);
+        let assetKey = vcConfig.name;
+        if (assetKey === 'index') {
+          assetKey = '/';
+        } else if (assetKey.endsWith('/index')) {
+          assetKey = assetKey.slice(0, -('/index'.length));
+        }
+
+        this.assets[assetKey] = new FunctionAsset(assetKey, functionAsset, vcConfig);
       }
 
     }
@@ -84,7 +91,11 @@ export default class AssetsCollection {
   }
 
   getAsset(key: string) {
-    return this.assets[key];
+    let assetKey = key;
+    if (assetKey !== '/' && assetKey.startsWith('/')) {
+      assetKey = assetKey.slice(1);
+    }
+    return this.assets[assetKey];
   }
 
 }

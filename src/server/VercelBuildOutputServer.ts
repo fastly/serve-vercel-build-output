@@ -116,7 +116,6 @@ export default class VercelBuildOutputServer {
 
   private serveFilesystem(routeMatchResult: RouterResultDest, routeMatcherContext: RouteMatcherContext) {
     const pathname = routeMatchResult.dest;
-    const assetName = pathname.startsWith('/') ? pathname.slice(1) : pathname;
 
     const request = routeMatcherContext.toRequest();
     // TODO: upgrade this to NextRequest
@@ -125,10 +124,10 @@ export default class VercelBuildOutputServer {
     this._logger?.debug('Serving from filesystem');
     this._logger?.debug({
       dest: routeMatchResult.dest,
-      assetName,
+      pathname,
     });
 
-    const asset = this._assetsCollection.getAsset(assetName);
+    const asset = this._assetsCollection.getAsset(pathname);
     if (asset instanceof FunctionAsset) {
       const func = asset.module.default as EdgeFunction;
       return func(request, context);
@@ -151,8 +150,10 @@ export default class VercelBuildOutputServer {
   }
 
   onCheckFilesystem(pathname: string) {
-    const assetName = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-    return this._assetsCollection.getAsset(assetName) != null;
+    this._logger?.debug('onCheckFilesystem', {pathname});
+    const result = this._assetsCollection.getAsset(pathname) != null;
+    this._logger?.debug({result});
+    return result;
   }
 
   async onMiddleware(middlewarePath: string, routeMatcherContext: RouteMatcherContext) {
