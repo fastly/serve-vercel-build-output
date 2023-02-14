@@ -2,7 +2,9 @@ import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
 import RoutesCollection from "./RoutesCollection";
 import RouteMatcherContext from "./RouteMatcherContext";
 import {
-  HttpHeadersConfig, MiddlewareHandler, MiddlewareResponse,
+  HttpHeadersConfig,
+  MiddlewareHandler,
+  MiddlewareResponse,
   PhaseResult,
   PhaseRoutesResult,
   RouteMatchResult,
@@ -108,6 +110,7 @@ export default class RouteMatcher {
           phaseResults,
           status,
           headers,
+          requestHeaders: routeMatcherContext.headers,
           middlewareResponse: phaseResult.middlewareResponse,
           type: 'middleware',
         };
@@ -119,6 +122,7 @@ export default class RouteMatcher {
           phaseResults,
           status,
           headers,
+          requestHeaders: routeMatcherContext.headers,
           dest: phaseResult.dest,
           type: 'proxy',
         };
@@ -158,6 +162,7 @@ export default class RouteMatcher {
           phaseResults,
           status,
           headers,
+          requestHeaders: routeMatcherContext.headers,
           dest: phaseResult.dest,
           type: 'filesystem',
         };
@@ -211,6 +216,7 @@ export default class RouteMatcher {
       phaseResults,
       status: 404,
       headers,
+      requestHeaders: routeMatcherContext.headers,
       dest: routeMatcherContext.pathname,
       type: 'error',
     };

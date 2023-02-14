@@ -7,7 +7,7 @@
 
 export * from './logging/index';
 export * from './utils/index';
+export * from './server/index';
 
-import VercelBuildOutputServer from './server/VercelBuildOutputServer';
-
+import { VercelBuildOutputServer } from './server/index';
 export default VercelBuildOutputServer;

@@ -17,10 +17,18 @@ import ILogger from "../logging/ILogger";
 import { headersToObject } from "../utils/query";
 import ILoggerProvider from "../logging/ILoggerProvider";
 
-type ServerInit = {
+export type BackendDef = {
+  url: string,
+};
+
+export type BackendsDefs = 'dynamic' | Record<string, string | BackendDef>;
+export type Backends = 'dynamic' | Record<string, BackendDef>;
+
+export type ServerInit = {
   modulePath?: string,
   assets: AssetsMap,
   config: Config,
+  backendDefs?: BackendsDefs,
 };
 
 export default class VercelBuildOutputServer {
@@ -30,6 +38,8 @@ export default class VercelBuildOutputServer {
   _assetsCollection: AssetsCollection;
 
   _routeMatcher: RouteMatcher;
+
+  _backends: Backends;
 
   _logger?: ILogger;
 
@@ -52,6 +62,21 @@ export default class VercelBuildOutputServer {
 
     this._templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
     this._assetsCollection = new AssetsCollection(init.assets, config.overrides);
+
+    this._backends = {};
+    if (init.backendDefs === 'dynamic') {
+      this._backends = 'dynamic';
+    } else if (init.backendDefs != null) {
+      for (const [key, def] of Object.entries(init.backendDefs)) {
+        let backend = def;
+        if (typeof backend === 'string') {
+          backend = {
+            url: backend
+          };
+        }
+        this._backends[key] = backend;
+      }
+    }
 
     this._logger = loggerProvider?.getLogger(this.constructor.name);
   }
@@ -87,7 +112,7 @@ export default class VercelBuildOutputServer {
     }
 
     if (routeMatchResult.type === 'proxy') {
-      return this.serveProxyResponse(routeMatchResult);
+      return this.serveProxyResponse(routeMatchResult, routeMatcherContext);
     }
 
     if (routeMatchResult.type === 'filesystem') {
@@ -107,11 +132,37 @@ export default class VercelBuildOutputServer {
     return routeMatchResult.middlewareResponse;
   }
 
-  private serveProxyResponse(routeMatchResult: RouterResultDest) {
+  private serveProxyResponse(routeMatchResult: RouterResultDest, routeMatcherContext: RouteMatcherContext) {
     this._logger?.debug('Serving proxy response');
     this._logger?.warn('TODO: To proxying to backend ' + routeMatchResult.dest);
-    // TODO: proxy this to backend
-    return new Response('proxy to ' + routeMatchResult.dest, {'headers': {'content-type': 'text/plain'}});
+
+    const requestInit: RequestInit = {
+      headers: new Headers(routeMatcherContext.headers),
+    };
+
+    if (routeMatcherContext.body != null) {
+      // TODO: we have to clone here maybe
+      requestInit.body = routeMatcherContext.body;
+    }
+
+    if (this._backends !== 'dynamic') {
+
+      let backend: string | undefined;
+      for (const [key, value] of Object.entries(this._backends)) {
+        if (routeMatchResult.dest.startsWith(value.url)) {
+          backend = key;
+          break;
+        }
+      }
+
+      if (backend == null) {
+        this._logger?.warn('Proxying to ' + routeMatchResult.dest + ' may fail as it does not match a defined backend.');
+      } else {
+        requestInit.backend = backend;
+      }
+    }
+
+    return fetch(routeMatchResult.dest, requestInit);
   }
 
   private serveFilesystem(routeMatchResult: RouterResultDest, routeMatcherContext: RouteMatcherContext) {

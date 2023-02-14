@@ -88,6 +88,7 @@ export type RouterResultBase = {
   phaseResults: PhaseRoutesResult[];
   status?: number;
   headers: HttpHeadersConfig;
+  requestHeaders: HttpHeadersConfig;
 }
 
 export type RouterResultDest = RouterResultBase & {
