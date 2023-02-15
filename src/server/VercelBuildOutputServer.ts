@@ -128,18 +128,15 @@ export default class VercelBuildOutputServer {
 
   private serveProxyResponse(routeMatchResult: RouterResultDest, routeMatcherContext: RouteMatcherContext) {
     this._logger?.debug('Serving proxy response');
-    this._logger?.warn('TODO: To proxying to backend ' + routeMatchResult.dest);
 
-    const headers = Object.assign({}, routeMatcherContext.headers);
-
-    const requestInit: RequestInit = {
-      headers: new Headers(routeMatcherContext.headers),
-    };
+    const requestInit: RequestInit = {};
 
     if (routeMatcherContext.body != null) {
       // TODO: we have to clone here maybe
       requestInit.body = routeMatcherContext.body;
     }
+
+    const headers = Object.assign({}, routeMatcherContext.headers);
 
     // rewrite host
     headers['host'] = new URL(routeMatchResult.dest).host;
@@ -184,6 +181,14 @@ export default class VercelBuildOutputServer {
       }
     }
 
+    requestInit.headers = new Headers(headers);
+
+    this._logger?.debug('Making proxy request to', routeMatchResult.dest);
+    this._logger?.debug({
+      backend: requestInit.backend,
+      headers,
+    });
+
     return fetch(routeMatchResult.dest, requestInit);
   }
 
@@ -213,7 +218,10 @@ export default class VercelBuildOutputServer {
         },
       });
     }
-    throw new Error('asset');
+    if (asset == null) {
+      throw new Error(`Unknown asset: ${pathname}`);
+    }
+    throw new Error('Unknown asset type ' + pathname);
   }
 
   private serveErrorResponse() {
