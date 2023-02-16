@@ -12,7 +12,7 @@ describe('utils/middleware', function() {
 
       const response = new Response(null);
 
-      const middlewareResponse = processMiddlewareResponse(response);
+      const middlewareResponse = processMiddlewareResponse(response, 'http://localhost/');
 
       assert.strictEqual(middlewareResponse.response, response);
       assert.strictEqual(middlewareResponse.status, 200);
@@ -31,7 +31,7 @@ describe('utils/middleware', function() {
         }
       });
 
-      const middlewareResponse = processMiddlewareResponse(response);
+      const middlewareResponse = processMiddlewareResponse(response, 'http://localhost/');
 
       assert.strictEqual(middlewareResponse.response, undefined);
       assert.ok(middlewareResponse.isContinue);
@@ -48,7 +48,7 @@ describe('utils/middleware', function() {
         },
       });
 
-      const middlewareResponse = processMiddlewareResponse(response);
+      const middlewareResponse = processMiddlewareResponse(response, 'http://localhost/');
 
       assert.strictEqual(middlewareResponse.response, undefined);
       assert.ok(middlewareResponse.isContinue);
@@ -65,7 +65,7 @@ describe('utils/middleware', function() {
         status: 307,
       });
 
-      const middlewareResponse = processMiddlewareResponse(response);
+      const middlewareResponse = processMiddlewareResponse(response, 'http://localhost/');
 
       assert.strictEqual(middlewareResponse.response, undefined);
       assert.ok(!middlewareResponse.isContinue);
@@ -82,11 +82,27 @@ describe('utils/middleware', function() {
         },
       });
 
-      const middlewareResponse = processMiddlewareResponse(response);
+      const middlewareResponse = processMiddlewareResponse(response, 'http://localhost/');
 
       assert.strictEqual(middlewareResponse.response, undefined);
       assert.ok(!middlewareResponse.isContinue);
       assert.strictEqual(middlewareResponse.dest, 'https://www.google.com/');
+
+    });
+
+    it('Response with rewrite (relative)', function() {
+
+      const response = new Response(null, {
+        headers: {
+          'x-middleware-rewrite': 'http://localhost/blog2',
+        },
+      });
+
+      const middlewareResponse = processMiddlewareResponse(response, 'http://localhost/blog1');
+
+      assert.strictEqual(middlewareResponse.response, undefined);
+      assert.ok(!middlewareResponse.isContinue);
+      assert.strictEqual(middlewareResponse.dest, '/blog2');
 
     });
 
@@ -102,7 +118,7 @@ describe('utils/middleware', function() {
         },
       });
 
-      const middlewareResponse = processMiddlewareResponse(response);
+      const middlewareResponse = processMiddlewareResponse(response, 'http://localhost/');
 
       assert.strictEqual(middlewareResponse.response, undefined);
       assert.ok(middlewareResponse.isContinue);
