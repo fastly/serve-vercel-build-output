@@ -3,7 +3,7 @@
 
 import * as assert from 'assert';
 
-import RouteMatcherContext, { defaultRequestBuilder } from '../../src/routing/RouteMatcherContext';
+import RouteMatcherContext from '../../src/routing/RouteMatcherContext';
 import { headersToObject } from "../../src/utils/query";
 
 const decoder = new TextDecoder();
@@ -26,19 +26,6 @@ async function streamToArrayBuffer(stream: ReadableStream<Uint8Array>): Promise<
 }
 
 describe('routing/RouteMatcherContext', function() {
-  describe('defaultRequestBuilder', function() {
-
-    it('creates an instance of Request', function() {
-
-      const request = defaultRequestBuilder('https://www.example.com/');
-
-      assert.ok(request instanceof Request);
-      assert.strictEqual(request.url, 'https://www.example.com/');
-
-    });
-
-  });
-
   describe('RouteMatcherContext', function () {
     describe('constructing', function() {
       it('constructor call', function () {
@@ -53,7 +40,6 @@ describe('routing/RouteMatcherContext', function() {
           body,
         });
 
-        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'foo');
         assert.strictEqual(routeMatcherContext.headers, headers);
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
@@ -77,7 +63,6 @@ describe('routing/RouteMatcherContext', function() {
 
         const routeMatcherContext = RouteMatcherContext.fromRequest(request);
 
-        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'POST');
         assert.deepStrictEqual(routeMatcherContext.headers, {
           'foo': 'bar',
@@ -99,7 +84,6 @@ describe('routing/RouteMatcherContext', function() {
 
         const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/');
 
-        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'GET');
         assert.deepStrictEqual(routeMatcherContext.headers, {});
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
@@ -117,7 +101,6 @@ describe('routing/RouteMatcherContext', function() {
           }
         );
 
-        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'POST');
         assert.deepStrictEqual(routeMatcherContext.headers, {});
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
@@ -136,27 +119,10 @@ describe('routing/RouteMatcherContext', function() {
           }
         );
 
-        assert.strictEqual(routeMatcherContext.getContext(), undefined);
         assert.strictEqual(routeMatcherContext.method, 'GET');
         assert.deepStrictEqual(routeMatcherContext.headers, { 'foo': 'bar' });
         assert.strictEqual(routeMatcherContext.url.toString(), 'https://www.example.com/');
         assert.strictEqual(routeMatcherContext.body, null);
-
-      });
-    });
-
-    describe('context', function() {
-      it('can set context', function() {
-
-        type X = {
-          foo: string;
-        };
-
-        const obj: X = { foo: 'bar' };
-
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/');
-        routeMatcherContext.setContext(obj);
-        assert.strictEqual(routeMatcherContext.getContext<X>(), obj);
 
       });
     });

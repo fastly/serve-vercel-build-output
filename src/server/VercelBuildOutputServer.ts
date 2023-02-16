@@ -1,3 +1,4 @@
+import { env } from "fastly:env";
 import { AssetsMap } from "@fastly/compute-js-static-publish";
 import { Config } from "../types/config";
 import TemplateEngine from "../templating/TemplateEngine";
@@ -6,7 +7,7 @@ import AssetsCollection from "../assets/AssetsCollection";
 import RoutesCollection from "../routing/RoutesCollection";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import { RouterResultDest, RouterResultMiddleware } from "../types/routing";
-import { Backends, BackendsDefs, EdgeFunction, ServeRequestContext } from "./types";
+import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext, ServeRequestContext } from "./types";
 import RouteMatcherContext from "../routing/RouteMatcherContext";
 import FunctionAsset from "../assets/FunctionAsset";
 import StaticBinaryAsset from "../assets/StaticBinaryAsset";
@@ -17,6 +18,7 @@ import ILogger from "../logging/ILogger";
 import { headersToObject } from "../utils/query";
 import ILoggerProvider from "../logging/ILoggerProvider";
 import { getBackendInfo } from "../utils/backends";
+import { generateRequestId } from "../utils";
 
 export type ServerInit = {
   modulePath?: string,
@@ -25,15 +27,22 @@ export type ServerInit = {
   backends?: BackendsDefs,
 };
 
+const REGEX_LOCALHOST_HOSTNAME = /(?!^https?:\/\/)(127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}|::1|localhost)/;
+export function parseURL(url: string | URL, base?: string | URL) {
+  return new URL(String(url).replace(REGEX_LOCALHOST_HOSTNAME, "localhost"), base && String(base).replace(REGEX_LOCALHOST_HOSTNAME, "localhost"));
+}
+
 export default class VercelBuildOutputServer {
 
   _templateEngine: TemplateEngine;
 
   _assetsCollection: AssetsCollection;
 
-  _routeMatcher: RouteMatcher;
+  _routesCollection: RoutesCollection;
 
   _backends: Backends | 'dynamic';
+
+  _loggerProvider?: ILoggerProvider;
 
   _logger?: ILogger;
 
@@ -45,14 +54,8 @@ export default class VercelBuildOutputServer {
 
     const routes = config.routes ?? [];
 
-    const routesCollection = new RoutesCollection(routes);
-    RouteSrcMatcher.init(routesCollection.routes);
-
-    this._routeMatcher = new RouteMatcher(routesCollection, loggerProvider);
-    this._routeMatcher.onCheckFilesystem =
-      (pathname) => this.onCheckFilesystem(pathname);
-    this._routeMatcher.onMiddleware =
-      (middlewarePath, routeMatcherContext) => this.onMiddleware(middlewarePath, routeMatcherContext);
+    this._routesCollection = new RoutesCollection(routes);
+    RouteSrcMatcher.init(this._routesCollection.routes);
 
     this._templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
     this._assetsCollection = new AssetsCollection(init.assets, config.overrides);
@@ -72,19 +75,45 @@ export default class VercelBuildOutputServer {
       }
     }
 
+    this._loggerProvider = loggerProvider;
     this._logger = loggerProvider?.getLogger(this.constructor.name);
+  }
+
+  public createHandler() {
+
+    return (event: FetchEvent) => {
+
+      return this.serveRequest(
+        event.request,
+        event.client,
+        {
+          waitUntil: event.waitUntil.bind(event),
+        },
+      );
+    };
+
   }
 
   public async serveRequest(
     request: Request,
-    context: ServeRequestContext,
+    client: ClientInfo,
+    edgeFunctionContext: EdgeFunctionContext,
   ): Promise<Response> {
 
-    const routeMatcherContext = RouteMatcherContext.fromRequest(request);
-    routeMatcherContext.setContext(context);
+    const initUrl = parseURL(request.url);
 
-    this._logger?.debug('context', {
-      requestId: context.requestId,
+    const requestContext: RequestContext = {
+      client,
+      // Fastly: build requestId from POP ID
+      requestId: generateRequestId(env('FASTLY_POP') || 'local'),
+      initUrl,
+      edgeFunctionContext,
+    };
+
+    const routeMatcherContext = RouteMatcherContext.fromRequest(request);
+
+    this._logger?.debug('requestContext', {
+      requestContext
     });
     this._logger?.debug('routeMatcherContext', {
       method: routeMatcherContext.method,
@@ -95,7 +124,15 @@ export default class VercelBuildOutputServer {
     });
 
     this._logger?.info('calling router');
-    const routeMatchResult = await this._routeMatcher.doRouter(routeMatcherContext);
+    const routeMatcher = new RouteMatcher(
+      this._routesCollection,
+      this._loggerProvider
+    );
+    routeMatcher.onCheckFilesystem =
+      pathname => this.onCheckFilesystem(pathname);
+    routeMatcher.onMiddleware = (middlewarePath, routeMatcherContext) =>
+      this.onMiddleware(middlewarePath, initUrl, routeMatcherContext, edgeFunctionContext);
+    const routeMatchResult = await routeMatcher.doRouter(routeMatcherContext);
     this._logger?.info('returned from router');
 
     this._logger?.debug('routeMatchResult', routeMatchResult);
@@ -106,17 +143,27 @@ export default class VercelBuildOutputServer {
     }
 
     if (routeMatchResult.type === 'proxy') {
-      return this.serveProxyResponse(routeMatchResult, routeMatcherContext);
+      return this.serveProxyResponse(
+        routeMatchResult,
+        routeMatcherContext,
+        client,
+      );
     }
 
     if (routeMatchResult.type === 'filesystem') {
-      return this.serveFilesystem(routeMatchResult, routeMatcherContext);
+      return this.serveFilesystem(
+        routeMatchResult,
+        routeMatcherContext,
+        edgeFunctionContext,
+      );
     }
 
     return this.serveErrorResponse();
   }
 
-  private serveMiddlewareResponse(routeMatchResult: RouterResultMiddleware) {
+  private serveMiddlewareResponse(
+    routeMatchResult: RouterResultMiddleware
+  ) {
     this._logger?.debug('Serving response from middleware');
     this._logger?.debug({
       status: routeMatchResult.middlewareResponse.status,
@@ -126,7 +173,11 @@ export default class VercelBuildOutputServer {
     return routeMatchResult.middlewareResponse;
   }
 
-  private serveProxyResponse(routeMatchResult: RouterResultDest, routeMatcherContext: RouteMatcherContext) {
+  private serveProxyResponse(
+    routeMatchResult: RouterResultDest,
+    routeMatcherContext: RouteMatcherContext,
+    client: ClientInfo,
+  ) {
     this._logger?.debug('Serving proxy response');
 
     const requestInit: RequestInit = {};
@@ -146,10 +197,8 @@ export default class VercelBuildOutputServer {
     const port = url.port || '443';       // C@E can only be on 443, except when running locally
     const proto = 'https';                // C@E can only be accessed via HTTPS
 
-    const requestContext = routeMatcherContext.getContext<ServeRequestContext>();
-
     const values: Record<string, string> = {
-      for: requestContext.client.address,
+      for: client.address ?? 'localhost',
       port,
       proto,
     };
@@ -192,12 +241,14 @@ export default class VercelBuildOutputServer {
     return fetch(routeMatchResult.dest, requestInit);
   }
 
-  private serveFilesystem(routeMatchResult: RouterResultDest, routeMatcherContext: RouteMatcherContext) {
+  private serveFilesystem(
+    routeMatchResult: RouterResultDest,
+    routeMatcherContext: RouteMatcherContext,
+    edgeFunctionContext: EdgeFunctionContext,
+  ) {
     const pathname = routeMatchResult.dest;
 
     const request = routeMatcherContext.toRequest();
-    // TODO: upgrade this to NextRequest
-    const context = routeMatcherContext.getContext<ServeRequestContext>();
 
     this._logger?.debug('Serving from filesystem');
     this._logger?.debug({
@@ -208,7 +259,7 @@ export default class VercelBuildOutputServer {
     const asset = this._assetsCollection.getAsset(pathname);
     if (asset instanceof FunctionAsset) {
       const func = asset.module.default as EdgeFunction;
-      return func(request, context);
+      return func(request, edgeFunctionContext);
     }
     if (asset instanceof StaticBinaryAsset || asset instanceof StaticStringAsset) {
       return new Response(asset.content, {
@@ -237,7 +288,12 @@ export default class VercelBuildOutputServer {
     return result;
   }
 
-  async onMiddleware(middlewarePath: string, routeMatcherContext: RouteMatcherContext) {
+  async onMiddleware(
+    middlewarePath: string,
+    initUrl: URL,
+    routeMatcherContext: RouteMatcherContext,
+    edgeFunctionContext: EdgeFunctionContext,
+  ) {
     const asset = this._assetsCollection.getAsset(middlewarePath);
     if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
       // not found (or wasn't a edge function)
@@ -251,12 +307,12 @@ export default class VercelBuildOutputServer {
     }
 
     const request = routeMatcherContext.toRequest();
-    // TODO: upgrade this to NextRequest
-    const context = routeMatcherContext.getContext<ServeRequestContext>();
 
     const func = asset.module.default as EdgeFunction;
-    const response = await func(request, context);
+    const response = await func(request, edgeFunctionContext);
 
-    return processMiddlewareResponse(response);
+    const result = processMiddlewareResponse(response, initUrl);
+    this._logger?.debug({initUrl, result});
+    return result;
   }
 }

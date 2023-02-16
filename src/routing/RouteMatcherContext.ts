@@ -33,12 +33,6 @@ type UrlInit = {
   body?: BodyInit | null;
 };
 
-export type RequestBuilder = (input: URL | RequestInfo, init: RequestInit) => Request;
-
-export function defaultRequestBuilder(input: URL | RequestInfo, init?: RequestInit) {
-  return new Request(input, init);
-}
-
 export default class RouteMatcherContext {
 
   method: string;
@@ -92,15 +86,6 @@ export default class RouteMatcherContext {
 
   body: BodyInit | null;
 
-  private _context: any = undefined;
-  getContext<T>(): T {
-    return this._context as T;
-  }
-
-  setContext<T>(value: T) {
-    this._context = value;
-  }
-
   constructor(init: RouteMatcherContextInit) {
 
     this.method = init.method;
@@ -125,7 +110,7 @@ export default class RouteMatcherContext {
 
   }
 
-  static fromUrl(requestUrl: string, init: UrlInit = {}) {
+  static fromUrl<TContext>(requestUrl: string, init: UrlInit = {}) {
 
     const {
       method = 'GET',
@@ -142,9 +127,9 @@ export default class RouteMatcherContext {
 
   }
 
-  toRequest(builder: RequestBuilder = defaultRequestBuilder): Request {
+  toRequest(): Request {
 
-    return builder(
+    return new Request(
       this.url,
       {
         method: this.method,

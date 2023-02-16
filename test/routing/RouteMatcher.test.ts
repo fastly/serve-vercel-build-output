@@ -179,7 +179,7 @@ describe('routing/RouteMatcher', function () {
       });
     });
 
-    describe('routeMainLoop', function() {
+    describe('doRouter', function() {
       // we only do simple cases here, we will be doing a lot of end-to-end in
       // integration tests
 
@@ -195,7 +195,7 @@ describe('routing/RouteMatcher', function () {
 
         const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
 
-        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+        const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
         assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), []);
         assert.strictEqual(routerResult.status, 404);
@@ -215,7 +215,7 @@ describe('routing/RouteMatcher', function () {
 
         const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
 
-        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+        const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
         assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), []);
         assert.strictEqual(routerResult.status, undefined);
@@ -256,7 +256,7 @@ describe('routing/RouteMatcher', function () {
 
         const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
 
-        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+        const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
         assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), [
           {
@@ -314,7 +314,7 @@ describe('routing/RouteMatcher', function () {
 
         const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
 
-        const routerResult = await routeMatcher.routeMainLoop(routeMatcherContext);
+        const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
         assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), [
           {

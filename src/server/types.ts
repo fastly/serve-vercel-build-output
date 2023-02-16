@@ -1,3 +1,6 @@
+import RouteMatcherContext from "../routing/RouteMatcherContext";
+import { RouterResult } from "../types/routing";
+
 export type BackendDef = {
   url: string,
 };
@@ -11,10 +14,24 @@ export type BackendInfo = {
   target: string,
 };
 
-export type ServeRequestContext = {
-  requestId: string,
+export type RequestContext = {
   client: ClientInfo,
+  requestId: string,
+  initUrl: URL,
+
+  // A "context" object that contains a "waitUntil" binding to pass to
+  // the edge function.
+  edgeFunctionContext: EdgeFunctionContext,
+};
+
+export type ServeRequestContext = {
+  requestContext: RequestContext,
+  routeMatcherContext: RouteMatcherContext,
+  routeMatchResult?: RouterResult,
+};
+
+export type EdgeFunctionContext = {
   waitUntil: (promise: Promise<any>) => void,
 };
 
-export type EdgeFunction = (request: Request, context: ServeRequestContext) => Response;
+export type EdgeFunction = (request: Request, context: EdgeFunctionContext) => Response;

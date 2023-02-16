@@ -41,10 +41,6 @@ export default class RouteMatcher {
     this._logger = loggerProvider?.getLogger(this.constructor.name);
   }
 
-  async doRouter(routeMatcherContext: RouteMatcherContext) {
-    return await this.routeMainLoop(routeMatcherContext);
-  }
-
   async checkFilesystem(pathname: string): Promise<boolean> {
     if (this.onCheckFilesystem != null) {
       return this.onCheckFilesystem(pathname);
@@ -74,7 +70,7 @@ export default class RouteMatcher {
     return {};
   }
 
-  async routeMainLoop(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
+  async doRouter(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
 
     const phaseResults: PhaseRoutesResult[] = [];
     let status: number | undefined = undefined;
