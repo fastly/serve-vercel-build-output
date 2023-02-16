@@ -60,6 +60,7 @@
     "build/esm/**/*.ts.map",
     "build/esm/**/*.d.ts",
     "resources/**/*",
+    "polyfills.js",
     "LICENSE",
     "README.md",
     "SECURITY.md"
