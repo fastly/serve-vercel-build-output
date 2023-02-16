@@ -6,6 +6,16 @@ import StaticStringAsset from "./StaticStringAsset";
 import FunctionAsset, { VercelFunctionConfig } from "./FunctionAsset";
 import StaticAsset from "./StaticAsset";
 
+function adjustIndexPathname(pathname: string) {
+  let adjustedPathname = pathname;
+  if (adjustedPathname === 'index') {
+    adjustedPathname = '/';
+  } else if (adjustedPathname.endsWith('/index')) {
+    adjustedPathname = adjustedPathname.slice(0, -('/index'.length));
+  }
+  return adjustedPathname;
+}
+
 export default class AssetsCollection {
 
   assets: Record<string, AssetBase>;
@@ -21,19 +31,20 @@ export default class AssetsCollection {
       if(key.startsWith('/static/')) {
 
         const path = key.slice('/static/'.length);
+        let assetKey = adjustIndexPathname(path);
 
-        if (this.assets[path] != null) {
+        if (this.assets[assetKey] != null) {
           // shouldn't happen, but if duplicate def, then skip
           continue;
         }
 
         let asset;
         if (value.type === 'binary') {
-          asset = new StaticBinaryAsset(path, value);
+          asset = new StaticBinaryAsset(assetKey, value);
         } else {
-          asset = new StaticStringAsset(path, value);
+          asset = new StaticStringAsset(assetKey, value);
         }
-        this.assets[path] = asset;
+        this.assets[assetKey] = asset;
 
       }
 
@@ -55,13 +66,7 @@ export default class AssetsCollection {
           continue;
         }
 
-        let assetKey = vcConfig.name;
-        if (assetKey === 'index') {
-          assetKey = '/';
-        } else if (assetKey.endsWith('/index')) {
-          assetKey = assetKey.slice(0, -('/index'.length));
-        }
-
+        let assetKey = adjustIndexPathname(vcConfig.name);
         this.assets[assetKey] = new FunctionAsset(assetKey, functionAsset, vcConfig);
       }
 
@@ -82,12 +87,14 @@ export default class AssetsCollection {
         }
 
         // for now, we're going to add another entry to map to the same item
-        if (value.path != null && this.assets[value.path] == null) {
-          this.assets[value.path] = existingAsset;
+        if (value.path != null) {
+          const assetKey = adjustIndexPathname(value.path);
+          if (this.assets[assetKey] == null) {
+            this.assets[assetKey] = existingAsset;
+          }
         }
       }
     }
-
   }
 
   getAsset(key: string) {
