@@ -151,7 +151,7 @@ export default class VercelBuildOutputServer {
     }
 
     if (routeMatchResult.type === 'filesystem') {
-      return this.serveFilesystem(
+      return await this.serveFilesystem(
         routeMatchResult,
         routeMatcherContext,
         edgeFunctionContext,
@@ -241,7 +241,7 @@ export default class VercelBuildOutputServer {
     return fetch(routeMatchResult.dest, requestInit);
   }
 
-  private serveFilesystem(
+  private async serveFilesystem(
     routeMatchResult: RouterResultDest,
     routeMatcherContext: RouteMatcherContext,
     edgeFunctionContext: EdgeFunctionContext,
@@ -258,7 +258,7 @@ export default class VercelBuildOutputServer {
 
     const asset = this._assetsCollection.getAsset(pathname);
     if (asset instanceof FunctionAsset) {
-      const func = asset.module.default as EdgeFunction;
+      const func = (await asset.loadModule()).default as EdgeFunction;
       return func(request, edgeFunctionContext);
     }
     if (asset instanceof StaticBinaryAsset || asset instanceof StaticStringAsset) {
@@ -308,7 +308,7 @@ export default class VercelBuildOutputServer {
 
     const request = routeMatcherContext.toRequest();
 
-    const func = asset.module.default as EdgeFunction;
+    const func = (await asset.loadModule()).default as EdgeFunction;
     const response = await func(request, edgeFunctionContext);
 
     const result = processMiddlewareResponse(response, initUrl);

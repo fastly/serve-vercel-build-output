@@ -11,14 +11,26 @@ export type VercelFunctionConfig = {
 };
 
 export default class FunctionAsset extends AssetBase {
-  module: any;
+  private readonly _moduleLoader: (() => Promise<any>) | undefined;
+
+  async loadModule(): Promise<any> {
+    if (this._moduleLoader == null) {
+      throw new Error('Asset ' + this.key + ' cannot be loaded as a module');
+    }
+    return this._moduleLoader;
+  }
 
   vcConfig: VercelFunctionConfig;
 
   constructor(key: string, asset: Asset, vcConfig: VercelFunctionConfig) {
     super(key);
-    this.module = asset.module;
+
+    if (asset.loadModule != null) {
+      this._moduleLoader = asset.loadModule;
+    } else if (asset.module) {
+      this._moduleLoader = () => new Promise<any>(resolve => resolve(asset.module));
+    }
+
     this.vcConfig = vcConfig;
   }
-
 }
