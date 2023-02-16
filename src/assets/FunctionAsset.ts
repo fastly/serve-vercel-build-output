@@ -17,7 +17,7 @@ export default class FunctionAsset extends AssetBase {
     if (this._moduleLoader == null) {
       throw new Error('Asset ' + this.key + ' cannot be loaded as a module');
     }
-    return this._moduleLoader;
+    return this._moduleLoader();
   }
 
   vcConfig: VercelFunctionConfig;
@@ -27,8 +27,9 @@ export default class FunctionAsset extends AssetBase {
 
     if (asset.loadModule != null) {
       this._moduleLoader = asset.loadModule;
-    } else if (asset.module) {
-      this._moduleLoader = () => new Promise<any>(resolve => resolve(asset.module));
+    } else if (asset.module != null) {
+      const promise = new Promise<any>(resolve => resolve(asset.module));
+      this._moduleLoader = () => promise;
     }
 
     this.vcConfig = vcConfig;
