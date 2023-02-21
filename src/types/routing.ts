@@ -93,7 +93,7 @@ export type RouterResultBase = {
 
 export type RouterResultDest = RouterResultBase & {
   dest: string;
-  type: 'filesystem' | 'proxy' | 'error';
+  type: 'filesystem' | 'proxy' | 'error' | 'redirect';
 }
 
 export type RouterResultMiddleware = RouterResultBase & {

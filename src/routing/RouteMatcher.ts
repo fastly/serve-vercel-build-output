@@ -78,18 +78,25 @@ export default class RouteMatcher {
 
     function mergeHeaders(phase: HandleValue | null, phaseHeaders: HttpHeadersConfig | undefined) {
       if (phaseHeaders != null) {
+        // Note: keys are already lowercase
         for (const [key, value] of Object.entries(phaseHeaders)) {
-          if ((phase === 'hit' || phase === 'miss') && Object.prototype.hasOwnProperty.call(headers, key.toLowerCase())) {
+          if ((phase === 'hit' || phase === 'miss') && Object.prototype.hasOwnProperty.call(headers, key)) {
             // For some reason,
             // for hit or miss we only ADD headers, we don't overwrite.
             continue;
           }
-          headers[key.toLowerCase()] = value;
+          headers[key] = value;
         }
       }
     }
 
     let phase: HandleValue | null = null;
+
+    // Phases go in this order:
+    //   null -> filesystem -> resource
+    // However, a route in the filesystem and resource phases
+    // can set check: true.  If it does, then it jumps to the rewrite phase
+    //   rewrite -> filesystem -> resource
 
     while(true) {
       const phaseResult = await this.doPhaseRoutes(phase, routeMatcherContext);
@@ -132,12 +139,30 @@ export default class RouteMatcher {
         continue;
       }
 
+      // NOTE: Need research - what to do if check and location are both set?
+
       // match the file to filesystem
       // this can be a static file OR a function
       let matched = await this.checkFilesystem(phaseResult.dest);
 
-      // check redirects and status codes
-      // send redirect or send error
+      // check for redirect
+      if (phaseResult.status != null &&
+        phaseResult.status >= 300 && phaseResult.status < 400
+      ) {
+        const location = phaseResult.headers?.['location'] ?? phaseResult.dest;
+        if (location !== '') {
+          return {
+            phaseResults,
+            status,
+            headers: {},
+            requestHeaders: routeMatcherContext.headers,
+            dest: location,
+            type: 'redirect',
+          };
+        }
+      }
+
+      // check for status codes (errors)
 
       // check match
       if (matched) {

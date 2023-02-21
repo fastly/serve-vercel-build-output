@@ -1,13 +1,12 @@
 import { env } from "fastly:env";
 import { AssetsMap } from "@fastly/compute-js-static-publish";
 import { Config } from "../types/config";
-import TemplateEngine from "../templating/TemplateEngine";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine";
 import AssetsCollection from "../assets/AssetsCollection";
 import RoutesCollection from "../routing/RoutesCollection";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
-import { RouterResultDest, RouterResultMiddleware } from "../types/routing";
-import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext, ServeRequestContext } from "./types";
+import { HttpHeadersConfig, RouterResultDest, RouterResultMiddleware } from "../types/routing";
+import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext } from "./types";
 import RouteMatcherContext from "../routing/RouteMatcherContext";
 import FunctionAsset from "../assets/FunctionAsset";
 import StaticBinaryAsset from "../assets/StaticBinaryAsset";
@@ -34,7 +33,7 @@ export function parseURL(url: string | URL, base?: string | URL) {
 
 export default class VercelBuildOutputServer {
 
-  _templateEngine: TemplateEngine;
+  _templateEngine: VercelBuildOutputTemplateEngine;
 
   _assetsCollection: AssetsCollection;
 
@@ -102,10 +101,12 @@ export default class VercelBuildOutputServer {
 
     const initUrl = parseURL(request.url);
 
+    // Fastly: build requestId from POP ID
+    const requestId = generateRequestId(env('FASTLY_POP') || 'local');
+
     const requestContext: RequestContext = {
       client,
-      // Fastly: build requestId from POP ID
-      requestId: generateRequestId(env('FASTLY_POP') || 'local'),
+      requestId,
       initUrl,
       edgeFunctionContext,
     };
@@ -147,6 +148,15 @@ export default class VercelBuildOutputServer {
         routeMatchResult,
         routeMatcherContext,
         client,
+      );
+    }
+
+    if (routeMatchResult.type === 'redirect') {
+      return await this.sendRedirect(
+        request,
+        requestId,
+        routeMatchResult.dest,
+        routeMatchResult.status,
       );
     }
 
@@ -239,6 +249,55 @@ export default class VercelBuildOutputServer {
     });
 
     return fetch(routeMatchResult.dest, requestInit);
+  }
+
+  private buildResponseHeaders(
+    headers: HttpHeadersConfig,
+    requestId: string,
+  ): HttpHeadersConfig {
+    return {
+      'cache-control': 'public, max-age=0, must-revalidate',
+      ...headers,
+      server: 'Vercel',
+      'x-vercel-id': requestId,
+      'x-vercel-cache': 'MISS',
+    };
+  }
+
+  private async sendRedirect(
+    request: Request,
+    requestId: string,
+    location: string,
+    statusCode: number = 302,
+  ) {
+    this._logger?.debug(`Serving redirect ${statusCode}: ${location}`);
+
+    const headers = this.buildResponseHeaders(
+      { location },
+      requestId,
+    );
+
+    let body: string;
+    const accept = request.headers.get('accept') ?? 'text/plain';
+    if (accept.includes('json')) {
+      headers['content-type'] = 'application/json';
+      const json = JSON.stringify({
+        redirect: location,
+        status: String(statusCode),
+      });
+      body = `${json}\n`;
+    } else if (accept.includes('html')) {
+      headers['content-type'] = 'text/html';
+      body = this._templateEngine.redirectTemplate({ location, statusCode });
+    } else {
+      headers['content-type'] = 'text/plain';
+      body = `Redirecting to ${location} (${statusCode})\n`;
+    }
+
+    return new Response(body, {
+      status: statusCode,
+      headers,
+    });
   }
 
   private async serveFilesystem(
