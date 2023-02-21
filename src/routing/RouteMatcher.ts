@@ -163,6 +163,15 @@ export default class RouteMatcher {
       }
 
       // check for status codes (errors)
+      if (!matched && phaseResult.status != null) {
+        return {
+          phaseResults,
+          status,
+          headers,
+          requestHeaders: routeMatcherContext.headers,
+          type: 'status',
+        };
+      }
 
       // check match
       if (matched) {

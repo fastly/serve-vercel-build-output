@@ -101,7 +101,11 @@ export type RouterResultMiddleware = RouterResultBase & {
   middlewareResponse: Response;
 };
 
-export type RouterResult = RouterResultDest | RouterResultMiddleware;
+export type RouterResultStatus = RouterResultBase & {
+  type: 'status';
+};
+
+export type RouterResult = RouterResultDest | RouterResultMiddleware | RouterResultStatus;
 
 type PromiseOrValue<T> = Promise<T> | T;
 

@@ -18,6 +18,7 @@ import { headersToObject } from "../utils/query";
 import ILoggerProvider from "../logging/ILoggerProvider";
 import { getBackendInfo } from "../utils/backends";
 import { generateRequestId } from "../utils";
+import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors";
 
 export type ServerInit = {
   modulePath?: string,
@@ -160,6 +161,16 @@ export default class VercelBuildOutputServer {
       );
     }
 
+    if (routeMatchResult.type === 'status') {
+      return await this.sendError(
+        request,
+        requestId,
+        '',
+        routeMatchResult.status,
+        routeMatchResult.headers,
+      );
+    }
+
     if (routeMatchResult.type === 'filesystem') {
       return await this.serveFilesystem(
         routeMatchResult,
@@ -292,6 +303,78 @@ export default class VercelBuildOutputServer {
     } else {
       headers['content-type'] = 'text/plain';
       body = `Redirecting to ${location} (${statusCode})\n`;
+    }
+
+    return new Response(body, {
+      status: statusCode,
+      headers,
+    });
+  }
+
+  private async sendError(
+    request: Request,
+    requestId: string,
+    errorCode?: string,
+    statusCode: number = 500,
+    additionalHeaders: HttpHeadersConfig = {},
+  ) {
+
+    const headers = this.buildResponseHeaders(
+      additionalHeaders,
+      requestId,
+    );
+
+    const http_status_description = generateHttpStatusDescription(statusCode);
+    const error_code = errorCode || http_status_description;
+    const errorMessage = generateErrorMessage(statusCode, error_code);
+
+    let body: string;
+    const accept = request.headers.get('accept') ?? 'text/plain';
+    if (accept.includes('json')) {
+      headers['content-type'] = 'application/json';
+      const json = JSON.stringify({
+        error: {
+          code: statusCode,
+          message: errorMessage.title,
+        },
+      });
+      body = `${json}\n`;
+    } else if (accept.includes('html')) {
+      headers['content-type'] = 'text/html; charset=utf-8';
+
+      let view: string;
+      if (statusCode === 404) {
+        view = this._templateEngine.errorTemplate404({
+          ...errorMessage,
+          http_status_code: statusCode,
+          http_status_description,
+          error_code,
+          request_id: requestId,
+        });
+      } else if (statusCode === 502) {
+        view = this._templateEngine.errorTemplate502({
+          ...errorMessage,
+          http_status_code: statusCode,
+          http_status_description,
+          error_code,
+          request_id: requestId,
+        });
+      } else {
+        view = this._templateEngine.errorTemplate({
+          http_status_code: statusCode,
+          http_status_description,
+          error_code,
+          request_id: requestId,
+        });
+      }
+      body = this._templateEngine.errorTemplateBase({
+        http_status_code: statusCode,
+        http_status_description,
+        view,
+      });
+    } else {
+      headers['content-type'] = 'text/plain; charset=utf-8';
+      body = `${errorMessage.title}\n\n${error_code}\n`;
     }
 
     return new Response(body, {
