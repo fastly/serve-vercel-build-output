@@ -161,7 +161,7 @@ export default class VercelBuildOutputServer {
       );
     }
 
-    if (routeMatchResult.type === 'status') {
+    if (routeMatchResult.type === 'error') {
       return await this.sendError(
         request,
         requestId,

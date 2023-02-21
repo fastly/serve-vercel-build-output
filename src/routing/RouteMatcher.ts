@@ -70,6 +70,46 @@ export default class RouteMatcher {
     return {};
   }
 
+  handleRedirectResult(
+    phaseResults: PhaseRoutesResult[],
+    phaseResult: PhaseRoutesResult,
+  ): RouterResult | null {
+    if (phaseResult.status == null || phaseResult.status < 300 || phaseResult.status >= 400) {
+      return null;
+    }
+
+    const location = phaseResult.headers?.['location'] ?? phaseResult.dest;
+    if (location === '') {
+      return null;
+    }
+
+    return {
+      phaseResults,
+      status: phaseResult.status,
+      dest: location,
+      headers: {},
+      type: 'redirect',
+    };
+  }
+
+  handleStatusResult(
+    phaseResults: PhaseRoutesResult[],
+    phaseResult: PhaseRoutesResult,
+    headers: HttpHeadersConfig,
+  ): RouterResult | null {
+    if (phaseResult.status == null) {
+      return null;
+    }
+
+    return {
+      phaseResults,
+      status: phaseResult.status,
+      headers,
+      errorCode: '',
+      type: 'error',
+    };
+  }
+
   async doRouter(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
 
     const phaseResults: PhaseRoutesResult[] = [];
@@ -145,47 +185,43 @@ export default class RouteMatcher {
       // this can be a static file OR a function
       let matched = await this.checkFilesystem(phaseResult.dest);
 
-      // check for redirect
-      if (phaseResult.status != null &&
-        phaseResult.status >= 300 && phaseResult.status < 400
-      ) {
-        const location = phaseResult.headers?.['location'] ?? phaseResult.dest;
-        if (location !== '') {
-          return {
-            phaseResults,
-            status,
-            headers: {},
-            requestHeaders: routeMatcherContext.headers,
-            dest: location,
-            type: 'redirect',
-          };
-        }
+      // Handle this if it's a redirect
+      const redirectResult = this.handleRedirectResult(
+        phaseResults,
+        phaseResult
+      );
+      if (redirectResult != null) {
+        return redirectResult;
       }
 
-      // check for status codes (errors)
-      if (!matched && phaseResult.status != null) {
-        return {
+      // If this was not a match in the filesystem, then
+      // handle the status code too
+      if (!matched) {
+        const statusResult = this.handleStatusResult(
           phaseResults,
-          status,
+          phaseResult,
           headers,
-          requestHeaders: routeMatcherContext.headers,
-          type: 'status',
-        };
+        );
+        if (statusResult != null) {
+          return statusResult;
+        }
       }
 
       // check match
       if (matched) {
 
-        const hitResults = await this.doPhaseRoutes('hit', routeMatcherContext);
-        phaseResults.push(hitResults);
+        if (this._routesCollection.getPhaseRoutes('hit').length > 0) {
+          const hitResults = await this.doPhaseRoutes('hit', routeMatcherContext);
+          phaseResults.push(hitResults);
 
-        if (hitResults.matchedRoute != null) {
-          // items will all have "continue": true so there will be no matched route.
-          // items here cannot set status or a destination path
-          throw new Error("hit phase routes must have continue");
+          if (hitResults.matchedRoute != null) {
+            // items will all have "continue": true so there will be no matched route.
+            // items here cannot set status or a destination path
+            throw new Error("hit phase routes must have continue");
+          }
+
+          mergeHeaders('hit', hitResults.headers);
         }
-
-        mergeHeaders('hit', hitResults.headers);
 
         // serve it and end
         return {
@@ -199,23 +235,27 @@ export default class RouteMatcher {
 
       } else {
 
-        const missResults = await this.doPhaseRoutes('miss', routeMatcherContext);
-        phaseResults.push(missResults);
+        if (this._routesCollection.getPhaseRoutes('miss').length > 0) {
 
-        mergeHeaders('miss', missResults.headers);
+          const missResults = await this.doPhaseRoutes('miss', routeMatcherContext);
+          phaseResults.push(missResults);
 
-        if (missResults.matchedRoute != null) {
-          // if matches, then it has a dest and check
-          if (
-            missResults.matchedRoute.dest != null &&
-            missResults.matchedRoute.check
-          ) {
-            // "check" restarts this loop at the rewrite phase.
-            phase = 'rewrite';
-            continue;
+          mergeHeaders('miss', missResults.headers);
+
+          if (missResults.matchedRoute != null) {
+            // if matches, then it has a dest and check
+            if (
+              missResults.matchedRoute.dest != null &&
+              missResults.matchedRoute.check
+            ) {
+              // "check" restarts this loop at the rewrite phase.
+              phase = 'rewrite';
+              continue;
+            }
+
+            throw "unexpected";
           }
 
-          throw "unexpected";
         }
 
       }
@@ -240,17 +280,80 @@ export default class RouteMatcher {
       break;
     }
 
-    // TODO: probably do error routes here
+    // If we are here, then it means we have had no match
+    if (this._routesCollection.getPhaseRoutes('error').length > 0) {
+      const errorResults = await this.doPhaseRoutes('error', routeMatcherContext);
+      phaseResults.push(errorResults);
+
+      // error phase seems to be strange --
+      // it seems I should ignore check here but still merge headers and status
+      // probably also makes no sense to do hit or miss phases here
+
+      mergeHeaders(phase, errorResults.headers);
+      if (errorResults.status != null) {
+        status = errorResults.status;
+      }
+
+      // NOTE: Still need to find out, if this is destination URL, we will still proxy?
+      // If not, we should remove this.
+      if (errorResults.isDestUrl) {
+        return {
+          phaseResults,
+          status,
+          headers,
+          requestHeaders: routeMatcherContext.headers,
+          dest: errorResults.dest,
+          type: 'proxy',
+        };
+      }
+
+      // match the file to filesystem
+      // this can be a static file OR a function
+      let matched = await this.checkFilesystem(errorResults.dest);
+
+      // Handle this if it's a redirect
+      const redirectResult = this.handleRedirectResult(
+        phaseResults,
+        errorResults
+      );
+      if (redirectResult != null) {
+        return redirectResult;
+      }
+
+      // If this was not a match in the filesystem, then
+      // handle the status code too
+      if (!matched) {
+        const statusResult = this.handleStatusResult(
+          phaseResults,
+          errorResults,
+          headers,
+        );
+        if (statusResult != null) {
+          return statusResult;
+        }
+      }
+
+      // NOTE: need to find out if this is the right behavior:
+      // We do no hit or miss, and then just end (?)
+      if (matched) {
+        return {
+          phaseResults,
+          status,
+          headers,
+          requestHeaders: routeMatcherContext.headers,
+          dest: errorResults.dest,
+          type: 'filesystem',
+        };
+      }
+    }
 
     return {
       phaseResults,
-      status: 404,
       headers,
-      requestHeaders: routeMatcherContext.headers,
-      dest: routeMatcherContext.pathname,
+      status: 500,
+      errorCode: '',
       type: 'error',
     };
-
   }
 
   async doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext): Promise<PhaseRoutesResult> {

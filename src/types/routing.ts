@@ -88,24 +88,33 @@ export type RouterResultBase = {
   phaseResults: PhaseRoutesResult[];
   status?: number;
   headers: HttpHeadersConfig;
+}
+
+export type RouterResultRequestHeaders = {
   requestHeaders: HttpHeadersConfig;
 }
 
-export type RouterResultDest = RouterResultBase & {
+export type RouterResultDest = RouterResultBase & RouterResultRequestHeaders & {
   dest: string;
-  type: 'filesystem' | 'proxy' | 'error' | 'redirect';
+  type: 'filesystem' | 'proxy';
 }
 
-export type RouterResultMiddleware = RouterResultBase & {
+export type RouterResultRedirect = RouterResultBase & {
+  dest: string;
+  type: 'redirect';
+}
+
+export type RouterResultMiddleware = RouterResultBase & RouterResultRequestHeaders & {
   type: 'middleware';
   middlewareResponse: Response;
 };
 
-export type RouterResultStatus = RouterResultBase & {
-  type: 'status';
+export type RouterResultError = RouterResultBase & {
+  errorCode: string;
+  type: 'error';
 };
 
-export type RouterResult = RouterResultDest | RouterResultMiddleware | RouterResultStatus;
+export type RouterResult = RouterResultDest | RouterResultRedirect | RouterResultMiddleware | RouterResultError;
 
 type PromiseOrValue<T> = Promise<T> | T;
 

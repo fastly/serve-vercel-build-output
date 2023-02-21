@@ -198,12 +198,11 @@ describe('routing/RouteMatcher', function () {
         const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
         assert.deepStrictEqual(routerResult.phaseResults!.filter(x => x.matchedRoute != null), []);
-        assert.strictEqual(routerResult.status, 404);
+        assert.strictEqual(routerResult.status, 500);
         assert.deepStrictEqual(routerResult.headers, {
           'foo': 'bar',
         });
         assert.ok(routerResult.type === 'error');
-        assert.strictEqual(routerResult.dest, '/foo/bar');
       });
 
       it('filesystem result', async function () {
