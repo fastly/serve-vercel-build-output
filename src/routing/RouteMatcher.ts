@@ -181,10 +181,6 @@ export default class RouteMatcher {
 
       // NOTE: Need research - what to do if check and location are both set?
 
-      // match the file to filesystem
-      // this can be a static file OR a function
-      let matched = await this.checkFilesystem(phaseResult.dest);
-
       // Handle this if it's a redirect
       const redirectResult = this.handleRedirectResult(
         phaseResults,
@@ -193,6 +189,10 @@ export default class RouteMatcher {
       if (redirectResult != null) {
         return redirectResult;
       }
+
+      // match the file to filesystem
+      // this can be a static file OR a function
+      let matched = await this.checkFilesystem(phaseResult.dest);
 
       // If this was not a match in the filesystem, then
       // handle the status code too
@@ -211,16 +211,16 @@ export default class RouteMatcher {
       if (matched) {
 
         if (this._routesCollection.getPhaseRoutes('hit').length > 0) {
-          const hitResults = await this.doPhaseRoutes('hit', routeMatcherContext);
-          phaseResults.push(hitResults);
+          const hitResult = await this.doPhaseRoutes('hit', routeMatcherContext);
+          phaseResults.push(hitResult);
 
-          if (hitResults.matchedRoute != null) {
+          if (hitResult.matchedRoute != null) {
             // items will all have "continue": true so there will be no matched route.
             // items here cannot set status or a destination path
             throw new Error("hit phase routes must have continue");
           }
 
-          mergeHeaders('hit', hitResults.headers);
+          mergeHeaders('hit', hitResult.headers);
         }
 
         // serve it and end
@@ -237,16 +237,28 @@ export default class RouteMatcher {
 
         if (this._routesCollection.getPhaseRoutes('miss').length > 0) {
 
-          const missResults = await this.doPhaseRoutes('miss', routeMatcherContext);
-          phaseResults.push(missResults);
+          const missResult = await this.doPhaseRoutes('miss', routeMatcherContext);
+          phaseResults.push(missResult);
 
-          mergeHeaders('miss', missResults.headers);
+          mergeHeaders('miss', missResult.headers);
+          if (missResult.status != null) {
+            status = missResult.status;
+          }
 
-          if (missResults.matchedRoute != null) {
+          // Handle this if it's a redirect
+          const redirectResult = this.handleRedirectResult(
+            phaseResults,
+            missResult
+          );
+          if (redirectResult != null) {
+            return redirectResult;
+          }
+
+          if (missResult.matchedRoute != null) {
             // if matches, then it has a dest and check
             if (
-              missResults.matchedRoute.dest != null &&
-              missResults.matchedRoute.check
+              missResult.matchedRoute.dest != null &&
+              missResult.matchedRoute.check
             ) {
               // "check" restarts this loop at the rewrite phase.
               phase = 'rewrite';
@@ -282,50 +294,50 @@ export default class RouteMatcher {
 
     // If we are here, then it means we have had no match
     if (this._routesCollection.getPhaseRoutes('error').length > 0) {
-      const errorResults = await this.doPhaseRoutes('error', routeMatcherContext);
-      phaseResults.push(errorResults);
+      const errorResult = await this.doPhaseRoutes('error', routeMatcherContext);
+      phaseResults.push(errorResult);
 
       // error phase seems to be strange --
       // it seems I should ignore check here but still merge headers and status
       // probably also makes no sense to do hit or miss phases here
 
-      mergeHeaders(phase, errorResults.headers);
-      if (errorResults.status != null) {
-        status = errorResults.status;
+      mergeHeaders(phase, errorResult.headers);
+      if (errorResult.status != null) {
+        status = errorResult.status;
       }
 
       // NOTE: Still need to find out, if this is destination URL, we will still proxy?
       // If not, we should remove this.
-      if (errorResults.isDestUrl) {
+      if (errorResult.isDestUrl) {
         return {
           phaseResults,
           status,
           headers,
           requestHeaders: routeMatcherContext.headers,
-          dest: errorResults.dest,
+          dest: errorResult.dest,
           type: 'proxy',
         };
       }
 
-      // match the file to filesystem
-      // this can be a static file OR a function
-      let matched = await this.checkFilesystem(errorResults.dest);
-
       // Handle this if it's a redirect
       const redirectResult = this.handleRedirectResult(
         phaseResults,
-        errorResults
+        errorResult
       );
       if (redirectResult != null) {
         return redirectResult;
       }
+
+      // match the file to filesystem
+      // this can be a static file OR a function
+      let matched = await this.checkFilesystem(errorResult.dest);
 
       // If this was not a match in the filesystem, then
       // handle the status code too
       if (!matched) {
         const statusResult = this.handleStatusResult(
           phaseResults,
-          errorResults,
+          errorResult,
           headers,
         );
         if (statusResult != null) {
@@ -341,7 +353,7 @@ export default class RouteMatcher {
           status,
           headers,
           requestHeaders: routeMatcherContext.headers,
-          dest: errorResults.dest,
+          dest: errorResult.dest,
           type: 'filesystem',
         };
       }
