@@ -105,6 +105,7 @@ export default class VercelBuildOutputServer {
     edgeFunctionContext: EdgeFunctionContext,
   ): Promise<Response> {
 
+    // C@E uses 'host' header to build this URL.
     const initUrl = parseURL(request.url);
 
     // Fastly: build requestId from POP ID
@@ -225,12 +226,13 @@ export default class VercelBuildOutputServer {
     const proto = 'https';                // C@E can only be accessed via HTTPS
 
     const values: Record<string, string> = {
+      host: url.host,
       for: client.address ?? 'localhost',
       port,
       proto,
     };
 
-    ['for', 'port', 'proto'].forEach(function(header) {
+    ['host', 'for', 'port', 'proto'].forEach(function(header) {
       const arr: string[] = [];
       let strs = headers['x-forwarded-' + header];
       if(Array.isArray(strs)) {
@@ -251,9 +253,9 @@ export default class VercelBuildOutputServer {
       } else {
         requestInit.backend = backendInfo.name;
 
-        // rewrite host to that of backend
+        // rewrite host to that of backend, rather than the one in dest
         // TODO: maybe make this configurable?
-        headers['host'] = new URL(backendInfo.url).host;
+        // headers['host'] = new URL(backendInfo.url).host;
       }
     }
 

@@ -33,7 +33,7 @@ export interface RouteMatcherContext {
 
 }
 
-class RouteMatcherFromRequest implements RouteMatcherContext {
+class RouteMatcherContextFromRequest implements RouteMatcherContext {
 
   private readonly _method: string;
 
@@ -90,6 +90,8 @@ class RouteMatcherFromRequest implements RouteMatcherContext {
 
     this._method = _request.method;
     this._headers = headersToObject(_request.headers);
+
+    // On C@E, host is always set.
     this._host = this._headers['host'];
 
     this._pathname = '';
@@ -151,7 +153,7 @@ class RouteMatcherFromRequest implements RouteMatcherContext {
 }
 
 export function requestToRouteMatcherContext(request: Request): RouteMatcherContext {
-  return new RouteMatcherFromRequest(request);
+  return new RouteMatcherContextFromRequest(request);
 }
 
 export function routeMatcherContextToRequest(routeMatcherContext: RouteMatcherContext): Request {
