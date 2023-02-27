@@ -3,37 +3,229 @@
 
 import * as assert from 'assert';
 
-import RouteMatcherContext from '../../src/routing/RouteMatcherContext';
+import RouteMatcherContext_, {
+  requestToRouteMatcherContext,
+  RouteMatcherContext,
+  routeMatcherContextToRequest
+} from '../../src/routing/RouteMatcherContext';
 import { headersToObject } from "../../src/utils/query";
+import { readableStreamToArray } from "../../src/utils/stream";
 
 const decoder = new TextDecoder();
-
-async function streamToArrayBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
-  let result = new Uint8Array(0);
-  const reader = stream.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-
-    const newResult = new Uint8Array(result.length + value.length);
-    newResult.set(result);
-    newResult.set(value, result.length);
-    result = newResult;
-  }
-  return result;
-}
+const encoder = new TextEncoder();
 
 describe('routing/RouteMatcherContext', function() {
-  describe('RouteMatcherContext', function () {
+  describe.only('RouteMatcherContext', function () {
+    describe('requestToRouteMatcherContext', function() {
+
+      it('from Request', async function() {
+
+        const request = new Request(
+          'https://www.example.com/path/to/resource',
+        );
+
+        const routeMatcherContext = requestToRouteMatcherContext(request);
+
+        assert.strictEqual(routeMatcherContext.method, 'GET');
+        assert.strictEqual(routeMatcherContext.pathname, '/path/to/resource');
+        assert.strictEqual(routeMatcherContext.query, '');
+        assert.deepStrictEqual(routeMatcherContext.headers, {});
+
+        const body = await routeMatcherContext.body;
+        assert.strictEqual(body, null);
+
+      });
+
+      it('from Request with headers', async function() {
+
+        const request = new Request(
+          'https://www.example.com/',
+          {
+            headers: {
+              'foo': 'bar',
+              'content-type': 'text/plain;charset=UTF-8',
+            },
+          }
+        );
+
+        const routeMatcherContext = requestToRouteMatcherContext(request);
+
+        assert.strictEqual(routeMatcherContext.method, 'GET');
+        assert.strictEqual(routeMatcherContext.pathname, '/');
+        assert.strictEqual(routeMatcherContext.query, '');
+        assert.deepStrictEqual(routeMatcherContext.headers, {
+          'foo': 'bar',
+          'content-type': 'text/plain;charset=UTF-8',
+        });
+
+        const body = await routeMatcherContext.body;
+        assert.strictEqual(body, null);
+
+      });
+
+      it('from Request, with query', async function() {
+
+        const request = new Request(
+          'https://www.example.com/?foo=bar',
+        );
+
+        const routeMatcherContext = requestToRouteMatcherContext(request);
+
+        assert.strictEqual(routeMatcherContext.method, 'GET');
+        assert.strictEqual(routeMatcherContext.pathname, '/');
+        assert.strictEqual(routeMatcherContext.query, '?foo=bar');
+        assert.deepStrictEqual(routeMatcherContext.headers, {});
+
+        const body = await routeMatcherContext.body;
+        assert.strictEqual(body, null);
+
+      });
+
+      it('from Request, with body', async function() {
+
+        const request = new Request(
+          'https://www.example.com/',
+          {
+            method: 'POST',
+            body: 'baz',
+          }
+        );
+
+        const routeMatcherContext = requestToRouteMatcherContext(request);
+
+        assert.strictEqual(routeMatcherContext.method, 'POST');
+        assert.strictEqual(routeMatcherContext.pathname, '/');
+        assert.strictEqual(routeMatcherContext.query, '');
+
+        // POST will add this header automatically
+        assert.deepStrictEqual(routeMatcherContext.headers, {
+          'content-type': 'text/plain;charset=UTF-8',
+        });
+
+        const body = await routeMatcherContext.body;
+
+        assert.ok(body instanceof Uint8Array);
+        assert.strictEqual(
+          decoder.decode(body),
+          'baz'
+        );
+
+      });
+
+      it('doesn\'t consume the body from the Request', async function() {
+        const request = new Request(
+          'https://www.example.com/',
+          {
+            method: 'POST',
+            body: 'baz',
+          }
+        );
+
+        const routeMatcherContext = requestToRouteMatcherContext(request);
+
+        // This will consume the body in the route matcher context,
+        // but should not touch the body of the original request
+        const contextBody = await routeMatcherContext.body;
+        assert.ok(contextBody instanceof Uint8Array);
+
+        const requestBody = request.body;
+        assert.ok(requestBody instanceof ReadableStream<Uint8Array>);
+
+        const requestText = await request.text();
+        assert.strictEqual(requestText, 'baz');
+      });
+
+    });
+
+    describe('routeMatcherContextToRequest', function() {
+
+      it('with pathname only', function() {
+
+        const context: RouteMatcherContext = {
+          method: 'GET',
+          pathname: '/path/to/resource',
+          query: '',
+          headers: {},
+          body: null,
+        };
+        const request = routeMatcherContextToRequest(context, 'https://www.example.com/');
+
+        assert.strictEqual(request.method, 'GET');
+        assert.strictEqual(String(request.url), 'https://www.example.com/path/to/resource');
+        assert.deepStrictEqual(headersToObject(request.headers), {});
+        assert.strictEqual(request.body, null);
+
+      });
+
+      it('with headers', function() {
+
+        const context: RouteMatcherContext = {
+          method: 'GET',
+          pathname: '/',
+          query: '',
+          headers: {
+            'foo': 'bar',
+            'content-type': 'text/plain;charset=UTF-8',
+          },
+          body: null,
+        };
+        const request = routeMatcherContextToRequest(context, 'https://www.example.com/');
+
+        assert.strictEqual(request.method, 'GET');
+        assert.strictEqual(String(request.url), 'https://www.example.com/');
+        assert.deepStrictEqual(headersToObject(request.headers), {
+          'foo': 'bar',
+          'content-type': 'text/plain;charset=UTF-8',
+        });
+        assert.strictEqual(request.body, null);
+
+      });
+
+      it('with query', function() {
+
+        const context: RouteMatcherContext = {
+          method: 'GET',
+          pathname: '/path/to/resource',
+          query: '?foo=bar',
+          headers: {},
+          body: null,
+        };
+        const request = routeMatcherContextToRequest(context, 'https://www.example.com/');
+
+        assert.strictEqual(request.method, 'GET');
+        assert.strictEqual(String(request.url), 'https://www.example.com/path/to/resource?foo=bar');
+        assert.strictEqual(request.body, null);
+
+      });
+
+      it('with method and body', async function() {
+
+        const context: RouteMatcherContext = {
+          method: 'POST',
+          pathname: '/',
+          query: '',
+          headers: {},
+          body: Promise.resolve(encoder.encode('foo')),
+        };
+        const request = routeMatcherContextToRequest(context, 'https://www.example.com/');
+
+        assert.strictEqual(request.method, 'POST');
+        assert.strictEqual(String(request.url), 'https://www.example.com/');
+
+        assert.ok(request.body instanceof ReadableStream<Uint8Array>);
+        assert.strictEqual(await request.text(), 'foo');
+
+      });
+
+    });
+
     describe('constructing', function() {
       it('constructor call', function () {
 
         const headers = {};
         const body = {} as BodyInit;
 
-        const routeMatcherContext = new RouteMatcherContext({
+        const routeMatcherContext = new RouteMatcherContext_({
           method: 'foo',
           headers,
           url: 'https://www.example.com/',
@@ -61,7 +253,7 @@ describe('routing/RouteMatcherContext', function() {
           }
         );
 
-        const routeMatcherContext = RouteMatcherContext.fromRequest(request);
+        const routeMatcherContext = RouteMatcherContext_.fromRequest(request);
 
         assert.strictEqual(routeMatcherContext.method, 'POST');
         assert.deepStrictEqual(routeMatcherContext.headers, {
@@ -73,7 +265,7 @@ describe('routing/RouteMatcherContext', function() {
         assert.ok(routeMatcherContext.body instanceof ReadableStream<Uint8Array>);
         assert.strictEqual(
           decoder.decode(
-            await streamToArrayBuffer(routeMatcherContext.body)
+            await readableStreamToArray(routeMatcherContext.body)
           ),
           'baz'
         );
@@ -82,7 +274,7 @@ describe('routing/RouteMatcherContext', function() {
 
       it('new instance from URL (with no method or headers)', async function() {
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/');
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/');
 
         assert.strictEqual(routeMatcherContext.method, 'GET');
         assert.deepStrictEqual(routeMatcherContext.headers, {});
@@ -93,7 +285,7 @@ describe('routing/RouteMatcherContext', function() {
 
       it('new instance from URL (with POST and body)', async function() {
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl(
+        const routeMatcherContext = RouteMatcherContext_.fromUrl(
           'https://www.example.com/',
           {
             method: 'POST',
@@ -110,7 +302,7 @@ describe('routing/RouteMatcherContext', function() {
 
       it('new instance from URL (with headers)', async function() {
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl(
+        const routeMatcherContext = RouteMatcherContext_.fromUrl(
           'https://www.example.com/',
           {
             headers: {
@@ -130,7 +322,7 @@ describe('routing/RouteMatcherContext', function() {
     describe('toRequest', function() {
       it('default builder', async function () {
 
-        const routeMatcherContext = new RouteMatcherContext({
+        const routeMatcherContext = new RouteMatcherContext_({
           method: 'POST',
           headers: {
             'foo': 'bar',
@@ -154,7 +346,7 @@ describe('routing/RouteMatcherContext', function() {
         assert.ok(request.body instanceof ReadableStream<Uint8Array>);
         assert.strictEqual(
           decoder.decode(
-            await streamToArrayBuffer(request.body)
+            await readableStreamToArray(request.body)
           ),
           'baz'
         );

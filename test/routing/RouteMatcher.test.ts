@@ -6,7 +6,7 @@ import * as assert from 'assert';
 import { Route } from "@vercel/routing-utils";
 
 import RoutesCollection from "../../src/routing/RoutesCollection";
-import RouteMatcherContext from "../../src/routing/RouteMatcherContext";
+import RouteMatcherContext_ from "../../src/routing/RouteMatcherContext";
 import RouteMatcher from "../../src/routing/RouteMatcher";
 
 describe('routing/RouteMatcher', function () {
@@ -71,7 +71,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(null);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/')
         const middlewareResponse = await routeMatcher.doMiddlewareFunction('foo/bar', routeMatcherContext);
 
         assert.ok(middlewareResponse.isContinue);
@@ -96,7 +96,7 @@ describe('routing/RouteMatcher', function () {
           };
         };
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/')
 
         let result;
         result = await routeMatcher.doMiddlewareFunction('foo/bar', routeMatcherContext);
@@ -121,7 +121,7 @@ describe('routing/RouteMatcher', function () {
           };
         };
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/')
 
         let result;
         result = await routeMatcher.doMiddlewareFunction('foo/bar', routeMatcherContext);
@@ -193,7 +193,7 @@ describe('routing/RouteMatcher', function () {
           };
         };
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo/bar')
 
         const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
@@ -212,7 +212,7 @@ describe('routing/RouteMatcher', function () {
           return pathname === '/foo/bar';
         };
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo/bar')
 
         const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
@@ -253,7 +253,7 @@ describe('routing/RouteMatcher', function () {
           };
         }
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo/bar')
 
         const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
@@ -311,7 +311,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(routes);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo/bar')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo/bar')
 
         const routerResult = await routeMatcher.doRouter(routeMatcherContext);
 
@@ -358,7 +358,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(null);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes(null, routeMatcherContext);
 
@@ -400,7 +400,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(routes);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes('filesystem', routeMatcherContext);
 
@@ -461,7 +461,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(routes);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes('filesystem', routeMatcherContext);
 
@@ -543,7 +543,7 @@ describe('routing/RouteMatcher', function () {
           };
         };
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes(null, routeMatcherContext);
 
@@ -617,7 +617,7 @@ describe('routing/RouteMatcher', function () {
           };
         };
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes(null, routeMatcherContext);
 
@@ -694,7 +694,7 @@ describe('routing/RouteMatcher', function () {
           };
         };
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes(null, routeMatcherContext);
 
@@ -750,7 +750,7 @@ describe('routing/RouteMatcher', function () {
         const routesCollection = new RoutesCollection(routes);
         const routeMatcher = new RouteMatcher(routesCollection);
 
-        const routeMatcherContext = RouteMatcherContext.fromUrl('https://www.example.com/foo')
+        const routeMatcherContext = RouteMatcherContext_.fromUrl('https://www.example.com/foo')
 
         const phaseRoutesResult = await routeMatcher.doPhaseRoutes('filesystem', routeMatcherContext);
 

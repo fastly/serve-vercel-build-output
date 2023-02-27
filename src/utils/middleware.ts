@@ -1,4 +1,4 @@
-import { HttpHeadersConfig, MiddlewareResponse } from "../types/routing";
+import { HttpHeaders, MiddlewareResponse } from "../types/routing";
 import { relativizeURL } from "./routing";
 
 export function processMiddlewareResponse(response: Response, initUrl: string | URL): MiddlewareResponse {
@@ -6,8 +6,8 @@ export function processMiddlewareResponse(response: Response, initUrl: string | 
   let returnResponse = true;
   let isContinue = false;
   let status: number | undefined = undefined;
-  let headers: HttpHeadersConfig | undefined = undefined;
-  let requestHeaders: HttpHeadersConfig | undefined = undefined;
+  let headers: HttpHeaders | undefined = undefined;
+  let requestHeaders: HttpHeaders | undefined = undefined;
   let dest: string | undefined = undefined;
 
   // next - x-middleware-next. This is supposed to continue the middleware

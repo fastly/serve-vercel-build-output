@@ -1,7 +1,8 @@
 import { HandleValue, Route, RouteWithSrc } from "@vercel/routing-utils";
-import RouteMatcherContext from "../routing/RouteMatcherContext";
+import RouteMatcherContext_ from "../routing/RouteMatcherContext";
+import { PromiseOrValue } from "../utils/misc";
 
-export type HttpHeadersConfig = Record<string, string>;
+export type HttpHeaders = Record<string, string>;
 
 export type ValuesAndReplacements = {
   // Original value that contains replacement tokens
@@ -40,7 +41,7 @@ export type RouteMatchResult = {
   // currently added only by middleware,
   // these are set using x-middleware-request headers and
   // declared using x-middleware-override-headers
-  requestHeaders?: HttpHeadersConfig;
+  requestHeaders?: HttpHeaders;
 
   // the dest value of the route
   dest?: ValuesAndReplacements;
@@ -63,9 +64,9 @@ export type PhaseResult = {
 
   status?: number;
 
-  requestHeaders?: HttpHeadersConfig;
+  requestHeaders?: HttpHeaders;
 
-  headers?: HttpHeadersConfig;
+  headers?: HttpHeaders;
 
   dest: string;
 
@@ -87,11 +88,11 @@ export type PhaseRoutesResult = PhaseResult & {
 export type RouterResultBase = {
   phaseResults: PhaseRoutesResult[];
   status?: number;
-  headers: HttpHeadersConfig;
+  headers: HttpHeaders;
 }
 
 export type RouterResultRequestHeaders = {
-  requestHeaders: HttpHeadersConfig;
+  requestHeaders: HttpHeaders;
 }
 
 export type RouterResultDest = RouterResultBase & RouterResultRequestHeaders & {
@@ -116,19 +117,17 @@ export type RouterResultError = RouterResultBase & {
 
 export type RouterResult = RouterResultDest | RouterResultRedirect | RouterResultMiddleware | RouterResultError;
 
-type PromiseOrValue<T> = Promise<T> | T;
-
 export type MiddlewareHandler =
-  (middlewarePath: string, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<MiddlewareResponse>;
+  (middlewarePath: string, routeMatcherContext: RouteMatcherContext_) => PromiseOrValue<MiddlewareResponse>;
 
 export type MiddlewareResponse = {
   status?: number;
 
   dest?: string;
 
-  headers?: HttpHeadersConfig;
+  headers?: HttpHeaders;
 
-  requestHeaders?: HttpHeadersConfig;
+  requestHeaders?: HttpHeaders;
 
   isContinue: boolean;
 

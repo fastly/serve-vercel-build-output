@@ -1,4 +1,4 @@
-import RouteMatcherContext from "../routing/RouteMatcherContext";
+import RouteMatcherContext_ from "../routing/RouteMatcherContext";
 import { RouterResult } from "../types/routing";
 
 export type BackendDef = {
@@ -26,7 +26,7 @@ export type RequestContext = {
 
 export type ServeRequestContext = {
   requestContext: RequestContext,
-  routeMatcherContext: RouteMatcherContext,
+  routeMatcherContext: RouteMatcherContext_,
   routeMatchResult?: RouterResult,
 };
 

@@ -1,10 +1,10 @@
-import { HttpHeadersConfig } from "../types/routing";
+import { HttpHeaders } from "../types/routing";
 
 /**
  * Converts a Headers object to a dictionary
  * @param headers { Headers }
  */
-export function headersToObject(headers: Headers): HttpHeadersConfig {
+export function headersToObject(headers: Headers): HttpHeaders {
   const result: Record<string, string> = {};
   for (const [key, value] of headers.entries()) {
     result[key.toLowerCase()] = value;

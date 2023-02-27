@@ -1,8 +1,8 @@
 import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
 import RoutesCollection from "./RoutesCollection";
-import RouteMatcherContext from "./RouteMatcherContext";
+import RouteMatcherContext_ from "./RouteMatcherContext";
 import {
-  HttpHeadersConfig,
+  HttpHeaders,
   MiddlewareHandler,
   MiddlewareResponse,
   PhaseResult,
@@ -13,10 +13,9 @@ import {
 import { applyRouteResults, matchRoute } from "../utils/routing";
 import ILogger from "../logging/ILogger";
 import ILoggerProvider from "../logging/ILoggerProvider";
+import { PromiseOrValue } from "../utils/misc";
 
-type PromiseOrValue<T> = Promise<T> | T;
-
-export type InitHeadersHandler = () => PromiseOrValue<HttpHeadersConfig>;
+export type InitHeadersHandler = () => PromiseOrValue<HttpHeaders>;
 
 export type CheckFilesystemHandler =
   (pathname: string) => PromiseOrValue<boolean>;
@@ -50,7 +49,7 @@ export default class RouteMatcher {
 
   async doMiddlewareFunction(
     middlewarePath: string,
-    routeMatcherContext: RouteMatcherContext
+    routeMatcherContext: RouteMatcherContext_
   ): Promise<MiddlewareResponse> {
 
     if (this.onMiddleware != null) {
@@ -63,7 +62,7 @@ export default class RouteMatcher {
 
   }
 
-  async initHeaders(): Promise<HttpHeadersConfig> {
+  async initHeaders(): Promise<HttpHeaders> {
     if (this.onInitHeaders != null) {
       return this.onInitHeaders();
     }
@@ -95,7 +94,7 @@ export default class RouteMatcher {
   handleStatusResult(
     phaseResults: PhaseRoutesResult[],
     phaseResult: PhaseRoutesResult,
-    headers: HttpHeadersConfig,
+    headers: HttpHeaders,
   ): RouterResult | null {
     if (phaseResult.status == null) {
       return null;
@@ -110,13 +109,13 @@ export default class RouteMatcher {
     };
   }
 
-  async doRouter(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
+  async doRouter(routeMatcherContext: RouteMatcherContext_): Promise<RouterResult> {
 
     const phaseResults: PhaseRoutesResult[] = [];
     let status: number | undefined = undefined;
     const headers = await this.initHeaders();
 
-    function mergeHeaders(phase: HandleValue | null, phaseHeaders: HttpHeadersConfig | undefined) {
+    function mergeHeaders(phase: HandleValue | null, phaseHeaders: HttpHeaders | undefined) {
       if (phaseHeaders != null) {
         // Note: keys are already lowercase
         for (const [key, value] of Object.entries(phaseHeaders)) {
@@ -368,7 +367,7 @@ export default class RouteMatcher {
     };
   }
 
-  async doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext): Promise<PhaseRoutesResult> {
+  async doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext_): Promise<PhaseRoutesResult> {
 
     const matchedEntries: RouteMatchResult[] = [];
     let matchedRoute: RouteWithSrc | undefined = undefined;

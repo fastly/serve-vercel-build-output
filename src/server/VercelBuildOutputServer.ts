@@ -5,9 +5,9 @@ import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemp
 import AssetsCollection from "../assets/AssetsCollection";
 import RoutesCollection from "../routing/RoutesCollection";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
-import { HttpHeadersConfig, RouterResultDest, RouterResultMiddleware } from "../types/routing";
+import { HttpHeaders, RouterResultDest, RouterResultMiddleware } from "../types/routing";
 import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext } from "./types";
-import RouteMatcherContext from "../routing/RouteMatcherContext";
+import RouteMatcherContext_ from "../routing/RouteMatcherContext";
 import FunctionAsset from "../assets/FunctionAsset";
 import StaticBinaryAsset from "../assets/StaticBinaryAsset";
 import StaticStringAsset from "../assets/StaticStringAsset";
@@ -112,7 +112,7 @@ export default class VercelBuildOutputServer {
       edgeFunctionContext,
     };
 
-    const routeMatcherContext = RouteMatcherContext.fromRequest(request);
+    const routeMatcherContext = RouteMatcherContext_.fromRequest(request);
 
     this._logger?.debug('requestContext', {
       requestContext
@@ -196,7 +196,7 @@ export default class VercelBuildOutputServer {
 
   private serveProxyResponse(
     routeMatchResult: RouterResultDest,
-    routeMatcherContext: RouteMatcherContext,
+    routeMatcherContext: RouteMatcherContext_,
     client: ClientInfo,
   ) {
     this._logger?.debug('Serving proxy response');
@@ -263,9 +263,9 @@ export default class VercelBuildOutputServer {
   }
 
   private buildResponseHeaders(
-    headers: HttpHeadersConfig,
+    headers: HttpHeaders,
     requestId: string,
-  ): HttpHeadersConfig {
+  ): HttpHeaders {
     return {
       'cache-control': 'public, max-age=0, must-revalidate',
       ...headers,
@@ -316,7 +316,7 @@ export default class VercelBuildOutputServer {
     requestId: string,
     errorCode?: string,
     statusCode: number = 500,
-    additionalHeaders: HttpHeadersConfig = {},
+    additionalHeaders: HttpHeaders = {},
   ) {
 
     const headers = this.buildResponseHeaders(
@@ -385,7 +385,7 @@ export default class VercelBuildOutputServer {
 
   private async serveFilesystem(
     routeMatchResult: RouterResultDest,
-    routeMatcherContext: RouteMatcherContext,
+    routeMatcherContext: RouteMatcherContext_,
     edgeFunctionContext: EdgeFunctionContext,
   ) {
     const pathname = routeMatchResult.dest;
@@ -433,7 +433,7 @@ export default class VercelBuildOutputServer {
   async onMiddleware(
     middlewarePath: string,
     initUrl: URL,
-    routeMatcherContext: RouteMatcherContext,
+    routeMatcherContext: RouteMatcherContext_,
     edgeFunctionContext: EdgeFunctionContext,
   ) {
     const asset = this._assetsCollection.getAsset(middlewarePath);

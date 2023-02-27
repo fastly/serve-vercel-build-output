@@ -1,8 +1,8 @@
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
-import RouteMatcherContext from "../routing/RouteMatcherContext";
+import RouteMatcherContext_ from "../routing/RouteMatcherContext";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import {
-  HttpHeadersConfig,
+  HttpHeaders,
   MiddlewareHandler,
   PhaseResult,
   RouteMatchResult,
@@ -12,7 +12,7 @@ import { formatQueryString, parseQueryString } from "./query";
 
 type HasFieldEntry = NonNullable<RouteWithSrc['has']>[number];
 
-export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext) {
+export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext_) {
 
   const { methods, has, missing } = route;
 
@@ -48,7 +48,7 @@ export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcher
 
 function matchHasField(
   hasField: HasFieldEntry,
-  context: RouteMatcherContext,
+  context: RouteMatcherContext_,
 ) {
 
   const { type } = hasField;
@@ -101,7 +101,7 @@ function matchHasField(
 export function applyRouteResults(
   routeMatchResult: RouteMatchResult,
   phaseResult: PhaseResult,
-  routeMatcherContext: RouteMatcherContext,
+  routeMatcherContext: RouteMatcherContext_,
 ) {
 
   const { status, requestHeaders, headers, dest, isDestUrl, isCheck, middlewareResponse, } = routeMatchResult;
@@ -179,7 +179,7 @@ export async function matchRoute(
   phase: HandleValue | null,
   routeIndex: number,
   route: RouteWithSrc,
-  routeMatcherContext: RouteMatcherContext,
+  routeMatcherContext: RouteMatcherContext_,
   middlewareHandler?: MiddlewareHandler,
 ): Promise<RouteMatchResult | false> {
 
@@ -190,7 +190,7 @@ export async function matchRoute(
 
   let isContinue: boolean | undefined;
   let status: number | undefined = undefined;
-  let requestHeaders: HttpHeadersConfig | undefined = undefined;
+  let requestHeaders: HttpHeaders | undefined = undefined;
   let headers: Record<string, ValuesAndReplacements> | undefined = undefined;
   let dest: ValuesAndReplacements | undefined = undefined;
   let isDestUrl: boolean;
