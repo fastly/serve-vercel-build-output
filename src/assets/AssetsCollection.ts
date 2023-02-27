@@ -58,7 +58,15 @@ export default class AssetsCollection {
         const vcConfigStr = value.content;
         const vcConfig = JSON.parse(vcConfigStr) as VercelFunctionConfig;
 
-        const entrypoint = '/functions/' + vcConfig.name + '.func/' + vcConfig.entrypoint;
+        let functionName = vcConfig.name;
+        if (functionName == null) {
+          // Function name is the current directory, but
+          // with leading /functions/ and trailing .func removed.
+          functionName = key.slice('/functions/'.length);
+          functionName = functionName.slice(0, functionName.lastIndexOf('.func/.vc-config.json'));
+        }
+
+        const entrypoint = `/functions/${functionName}.func/` + (vcConfig.entrypoint ?? 'index.js');
         const functionAsset = assetsMap[entrypoint];
         if (functionAsset == null) {
           // shouldn't happen
@@ -66,7 +74,7 @@ export default class AssetsCollection {
           continue;
         }
 
-        let assetKey = adjustIndexPathname(vcConfig.name);
+        let assetKey = adjustIndexPathname(functionName);
         this.assets[assetKey] = new FunctionAsset(assetKey, functionAsset, vcConfig);
       }
 
