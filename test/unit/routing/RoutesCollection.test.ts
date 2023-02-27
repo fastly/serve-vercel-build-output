@@ -6,8 +6,8 @@ import * as path from 'path';
 import * as assert from 'assert';
 import { Route } from '@vercel/routing-utils';
 
-import RoutesCollection from '../../src/routing/RoutesCollection';
-import { Config } from '../../src/types/config';
+import RoutesCollection from '../../../src/routing/RoutesCollection';
+import { Config } from '../../../src/types/config';
 
 describe('routing/RoutesCollection', function() {
   describe('RoutesCollection', function() {

@@ -4,10 +4,10 @@
 import * as assert from 'assert';
 import { Route } from "@vercel/routing-utils";
 
-import { deepStrictEqualNullProto } from "../test_utils/assert";
-import RoutesCollection from "../../src/routing/RoutesCollection";
-import RouteMatcher from "../../src/routing/RouteMatcher";
-import { requestToRouteMatcherContext } from "../../src/routing/RouteMatcherContext";
+import { deepStrictEqualNullProto } from "../../test_utils/assert";
+import RoutesCollection from "../../../src/routing/RoutesCollection";
+import RouteMatcher from "../../../src/routing/RouteMatcher";
+import { requestToRouteMatcherContext } from "../../../src/routing/RouteMatcherContext";
 
 describe('routing/RouteMatcher', function () {
   describe('RouteMatcher', function () {

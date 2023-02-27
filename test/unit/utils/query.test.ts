@@ -3,8 +3,8 @@
 
 import * as assert from 'assert';
 
-import { headersToObject } from "../../src/utils/query";
-import {deepStrictEqualNullProto} from "../test_utils/assert";
+import { headersToObject } from "../../../src/utils/query";
+import {deepStrictEqualNullProto} from "../../test_utils/assert";
 
 describe('utils/query', function() {
   describe('headersToObject', function() {
