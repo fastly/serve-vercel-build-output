@@ -35,7 +35,7 @@ export interface RouteMatcherContext {
 
 class RouteMatcherFromRequest implements RouteMatcherContext {
 
-  private _method: string;
+  private readonly _method: string;
 
   get method() {
     return this._method;
@@ -72,14 +72,15 @@ class RouteMatcherFromRequest implements RouteMatcherContext {
   }
 
   private readonly _requestBody: ReadableStream<Uint8Array> | null;
-
-  private _body: Promise<Uint8Array> | null | undefined;
-
+  private _bodyPromise: Promise<Uint8Array> | undefined;
   get body(): Promise<Uint8Array> | null {
-    if (this._body === undefined) {
-      this._body = this._requestBody != null ? readableStreamToArray(this._requestBody) : null;
+    if (this._requestBody == null) {
+      return null;
     }
-    return this._body;
+    if (this._bodyPromise === undefined) {
+      this._bodyPromise = readableStreamToArray(this._requestBody);
+    }
+    return this._bodyPromise;
   }
 
   constructor(
@@ -103,8 +104,11 @@ class RouteMatcherFromRequest implements RouteMatcherContext {
       this._cookies = Object.create(null);
     }
 
-    this._requestBody = _request.body;
-    this._body = undefined;
+    this._requestBody = null;
+    if (this._method !== 'HEAD' && this._method !== 'GET') {
+      this._requestBody = _request.body;
+    }
+    this._bodyPromise = undefined;
   }
 
   applyUrl(
@@ -151,16 +155,18 @@ export function requestToRouteMatcherContext(request: Request): RouteMatcherCont
 }
 
 export function routeMatcherContextToRequest(routeMatcherContext: RouteMatcherContext): Request {
-
   const url = routeMatcherContextToUrl(routeMatcherContext);
-  const body = routeMatcherContext.body != null ? arrayToReadableStream(routeMatcherContext.body) : null;
 
-  return new Request(url, {
+  const requestInit: RequestInit = {
     method: routeMatcherContext.method,
     headers: routeMatcherContext.headers,
-    body,
-  });
+  };
 
+  if (routeMatcherContext.body != null) {
+    requestInit.body = arrayToReadableStream(routeMatcherContext.body);
+  }
+
+  return new Request(url, requestInit);
 }
 
 export function routeMatcherContextBaseUrl(routeMatcherContext: RouteMatcherContext) {
