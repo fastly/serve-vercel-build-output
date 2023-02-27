@@ -1,5 +1,6 @@
+import cookie from 'cookie';
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
-import RouteMatcherContext_ from "../routing/RouteMatcherContext";
+import { RouteMatcherContext } from "../routing/RouteMatcherContext";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import {
   HttpHeaders,
@@ -12,7 +13,7 @@ import { formatQueryString, parseQueryString } from "./query";
 
 type HasFieldEntry = NonNullable<RouteWithSrc['has']>[number];
 
-export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext_) {
+export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcherContext) {
 
   const { methods, has, missing } = route;
 
@@ -48,7 +49,7 @@ export function testRoute(route: RouteWithSrc, routeMatcherContext: RouteMatcher
 
 function matchHasField(
   hasField: HasFieldEntry,
-  context: RouteMatcherContext_,
+  context: RouteMatcherContext,
 ) {
 
   const { type } = hasField;
@@ -57,7 +58,7 @@ function matchHasField(
       return hasField.value == context.host;
     case 'cookie': {
       const { key, value } = hasField;
-      const cookieValue = context.cookies.get(key);
+      const cookieValue = context.cookies[key.toLowerCase()];
       if (cookieValue == null) {
         return false;
       }
@@ -101,7 +102,7 @@ function matchHasField(
 export function applyRouteResults(
   routeMatchResult: RouteMatchResult,
   phaseResult: PhaseResult,
-  routeMatcherContext: RouteMatcherContext_,
+  routeMatcherContext: RouteMatcherContext,
 ) {
 
   const { status, requestHeaders, headers, dest, isDestUrl, isCheck, middlewareResponse, } = routeMatchResult;
@@ -111,9 +112,6 @@ export function applyRouteResults(
   }
 
   if (requestHeaders != null) {
-    if (routeMatcherContext.headers == null) {
-      routeMatcherContext.headers = {};
-    }
     if (phaseResult.requestHeaders == null) {
       phaseResult.requestHeaders = {};
     }
@@ -134,22 +132,8 @@ export function applyRouteResults(
 
   if (dest != null) {
     let destPath = flattenValuesAndReplacements(dest);
-
-    let destUrl: URL;
-    if (!isURL(dest.finalValue) && !destPath.startsWith('/')) {
-      // If it's not a full URL, then make sure it starts with a slash
-      destPath = `/${destPath}`;
-    }
-    destUrl = new URL(destPath, routeMatcherContext.url);
-
-    // Merge in the query params
-    const origQuery = routeMatcherContext.query;
-    const destQuery = parseQueryString(destUrl.search);
-    const combinedQuery = Object.assign({}, destQuery, origQuery);
-    destUrl.search = formatQueryString(combinedQuery) ?? '';
-
-    routeMatcherContext.url = destUrl;
-    phaseResult.dest = isDestUrl ? String(destUrl) : destUrl.pathname + destUrl.search;
+    routeMatcherContext.dest = destPath;
+    phaseResult.dest = isDestUrl ? destPath : routeMatcherContext.dest;
   }
 
   if (isDestUrl) {
@@ -179,7 +163,7 @@ export async function matchRoute(
   phase: HandleValue | null,
   routeIndex: number,
   route: RouteWithSrc,
-  routeMatcherContext: RouteMatcherContext_,
+  routeMatcherContext: RouteMatcherContext,
   middlewareHandler?: MiddlewareHandler,
 ): Promise<RouteMatchResult | false> {
 

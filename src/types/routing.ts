@@ -1,8 +1,9 @@
 import { HandleValue, Route, RouteWithSrc } from "@vercel/routing-utils";
-import RouteMatcherContext_ from "../routing/RouteMatcherContext";
+import { RouteMatcherContext } from "../routing/RouteMatcherContext";
 import { PromiseOrValue } from "../utils/misc";
 
 export type HttpHeaders = Record<string, string>;
+export type HttpCookies = Record<string, string>;
 
 export type ValuesAndReplacements = {
   // Original value that contains replacement tokens
@@ -118,7 +119,7 @@ export type RouterResultError = RouterResultBase & {
 export type RouterResult = RouterResultDest | RouterResultRedirect | RouterResultMiddleware | RouterResultError;
 
 export type MiddlewareHandler =
-  (middlewarePath: string, routeMatcherContext: RouteMatcherContext_) => PromiseOrValue<MiddlewareResponse>;
+  (middlewarePath: string, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<MiddlewareResponse>;
 
 export type MiddlewareResponse = {
   status?: number;

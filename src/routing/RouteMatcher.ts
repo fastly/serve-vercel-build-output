@@ -1,6 +1,6 @@
 import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
 import RoutesCollection from "./RoutesCollection";
-import RouteMatcherContext_ from "./RouteMatcherContext";
+import { RouteMatcherContext } from "./RouteMatcherContext";
 import {
   HttpHeaders,
   MiddlewareHandler,
@@ -49,7 +49,7 @@ export default class RouteMatcher {
 
   async doMiddlewareFunction(
     middlewarePath: string,
-    routeMatcherContext: RouteMatcherContext_
+    routeMatcherContext: RouteMatcherContext
   ): Promise<MiddlewareResponse> {
 
     if (this.onMiddleware != null) {
@@ -109,7 +109,7 @@ export default class RouteMatcher {
     };
   }
 
-  async doRouter(routeMatcherContext: RouteMatcherContext_): Promise<RouterResult> {
+  async doRouter(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
 
     const phaseResults: PhaseRoutesResult[] = [];
     let status: number | undefined = undefined;
@@ -367,7 +367,7 @@ export default class RouteMatcher {
     };
   }
 
-  async doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext_): Promise<PhaseRoutesResult> {
+  async doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext): Promise<PhaseRoutesResult> {
 
     const matchedEntries: RouteMatchResult[] = [];
     let matchedRoute: RouteWithSrc | undefined = undefined;

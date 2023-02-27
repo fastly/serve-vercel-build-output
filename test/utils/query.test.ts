@@ -4,6 +4,7 @@
 import * as assert from 'assert';
 
 import { headersToObject } from "../../src/utils/query";
+import {deepStrictEqualNullProto} from "../test_utils/assert";
 
 describe('utils/query', function() {
   describe('headersToObject', function() {
@@ -12,7 +13,7 @@ describe('utils/query', function() {
       const headers = new Headers();
       const headersObject = headersToObject(headers);
 
-      assert.deepStrictEqual(headersObject, {});
+      deepStrictEqualNullProto(headersObject, {});
 
     });
 

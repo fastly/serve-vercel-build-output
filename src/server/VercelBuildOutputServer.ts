@@ -7,7 +7,11 @@ import RoutesCollection from "../routing/RoutesCollection";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import { HttpHeaders, RouterResultDest, RouterResultMiddleware } from "../types/routing";
 import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext } from "./types";
-import RouteMatcherContext_ from "../routing/RouteMatcherContext";
+import {
+  requestToRouteMatcherContext,
+  RouteMatcherContext,
+  routeMatcherContextToRequest
+} from "../routing/RouteMatcherContext";
 import FunctionAsset from "../assets/FunctionAsset";
 import StaticBinaryAsset from "../assets/StaticBinaryAsset";
 import StaticStringAsset from "../assets/StaticStringAsset";
@@ -19,6 +23,7 @@ import ILoggerProvider from "../logging/ILoggerProvider";
 import { getBackendInfo } from "../utils/backends";
 import { generateRequestId } from "../utils";
 import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors";
+import {arrayToReadableStream} from "../utils/stream";
 
 export type ServerInit = {
   modulePath?: string,
@@ -112,7 +117,7 @@ export default class VercelBuildOutputServer {
       edgeFunctionContext,
     };
 
-    const routeMatcherContext = RouteMatcherContext_.fromRequest(request);
+    const routeMatcherContext = requestToRouteMatcherContext(request);
 
     this._logger?.debug('requestContext', {
       requestContext
@@ -148,6 +153,7 @@ export default class VercelBuildOutputServer {
       return this.serveProxyResponse(
         routeMatchResult,
         routeMatcherContext,
+        request,
         client,
       );
     }
@@ -196,7 +202,8 @@ export default class VercelBuildOutputServer {
 
   private serveProxyResponse(
     routeMatchResult: RouterResultDest,
-    routeMatcherContext: RouteMatcherContext_,
+    routeMatcherContext: RouteMatcherContext,
+    request: Request,
     client: ClientInfo,
   ) {
     this._logger?.debug('Serving proxy response');
@@ -204,8 +211,7 @@ export default class VercelBuildOutputServer {
     const requestInit: RequestInit = {};
 
     if (routeMatcherContext.body != null) {
-      // TODO: we have to clone here maybe
-      requestInit.body = routeMatcherContext.body;
+      requestInit.body = arrayToReadableStream(routeMatcherContext.body);
     }
 
     const headers = Object.assign({}, routeMatcherContext.headers);
@@ -214,7 +220,7 @@ export default class VercelBuildOutputServer {
     headers['host'] = new URL(routeMatchResult.dest).host;
 
     // XFF
-    const url = routeMatcherContext.url;
+    const url = new URL(request.url);
     const port = url.port || '443';       // C@E can only be on 443, except when running locally
     const proto = 'https';                // C@E can only be accessed via HTTPS
 
@@ -385,12 +391,12 @@ export default class VercelBuildOutputServer {
 
   private async serveFilesystem(
     routeMatchResult: RouterResultDest,
-    routeMatcherContext: RouteMatcherContext_,
+    routeMatcherContext: RouteMatcherContext,
     edgeFunctionContext: EdgeFunctionContext,
   ) {
     const pathname = routeMatchResult.dest;
 
-    const request = routeMatcherContext.toRequest();
+    const request = routeMatcherContextToRequest(routeMatcherContext);
 
     this._logger?.debug('Serving from filesystem');
     this._logger?.debug({
@@ -433,7 +439,7 @@ export default class VercelBuildOutputServer {
   async onMiddleware(
     middlewarePath: string,
     initUrl: URL,
-    routeMatcherContext: RouteMatcherContext_,
+    routeMatcherContext: RouteMatcherContext,
     edgeFunctionContext: EdgeFunctionContext,
   ) {
     const asset = this._assetsCollection.getAsset(middlewarePath);
@@ -448,7 +454,7 @@ export default class VercelBuildOutputServer {
       };
     }
 
-    const request = routeMatcherContext.toRequest();
+    const request = routeMatcherContextToRequest(routeMatcherContext);
 
     const func = (await asset.loadModule()).default as EdgeFunction;
     const response = await func(request, edgeFunctionContext);

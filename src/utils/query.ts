@@ -5,7 +5,7 @@ import { HttpHeaders } from "../types/routing";
  * @param headers { Headers }
  */
 export function headersToObject(headers: Headers): HttpHeaders {
-  const result: Record<string, string> = {};
+  const result: Record<string, string> = Object.create(null);
   for (const [key, value] of headers.entries()) {
     result[key.toLowerCase()] = value;
   }
