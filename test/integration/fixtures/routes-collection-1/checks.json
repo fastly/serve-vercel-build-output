@@ -1,0 +1,8 @@
+{
+  "checks": [
+    {
+      "name": "/secret1",
+      "status": 404
+    }
+  ]
+}
