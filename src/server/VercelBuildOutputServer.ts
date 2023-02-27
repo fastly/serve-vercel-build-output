@@ -23,7 +23,7 @@ import ILoggerProvider from "../logging/ILoggerProvider";
 import { getBackendInfo } from "../utils/backends";
 import { generateRequestId } from "../utils";
 import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors";
-import {arrayToReadableStream} from "../utils/stream";
+import { arrayToReadableStream } from "../utils/stream";
 
 export type ServerInit = {
   modulePath?: string,
