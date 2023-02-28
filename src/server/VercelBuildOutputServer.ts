@@ -8,7 +8,7 @@ import RouteSrcMatcher from "../routing/RouteSrcMatcher";
 import { HttpHeaders, RouterResultDest, RouterResultMiddleware } from "../types/routing";
 import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext } from "./types";
 import {
-  requestToRouteMatcherContext,
+  createRouteMatcherContext,
   RouteMatcherContext,
   routeMatcherContextToRequest
 } from "../routing/RouteMatcherContext";
@@ -118,7 +118,7 @@ export default class VercelBuildOutputServer {
       edgeFunctionContext,
     };
 
-    const routeMatcherContext = requestToRouteMatcherContext(request);
+    const routeMatcherContext = createRouteMatcherContext(request);
 
     this._logger?.debug('requestContext', {
       requestContext

@@ -86,19 +86,13 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
   constructor(
     request: Request
   ) {
-    const _request = request.clone();
+    this._method = request.method;
+    this._headers = headersToObject(request.headers);
 
-    this._method = _request.method;
-    this._headers = headersToObject(_request.headers);
-
-    // On C@E, host is always set.
-    this._host = this._headers['host'];
-
-    this._pathname = '';
-    this._query = Object.create(null);
-
-    const url = new URL(_request.url);
-    this.applyUrl(url);
+    const url = new URL(request.url);
+    this._pathname = url.pathname;
+    this._query = parseQueryString(url.search);
+    this._host = url.host;
 
     if (this._headers['cookie']) {
       this._cookies = cookie.parse(this._headers['cookie']);
@@ -108,20 +102,9 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
 
     this._requestBody = null;
     if (this._method !== 'HEAD' && this._method !== 'GET') {
-      this._requestBody = _request.body;
+      this._requestBody = request.body;
     }
     this._bodyPromise = undefined;
-  }
-
-  applyUrl(
-    url: URL
-  ) {
-    this._pathname = url.pathname;
-    this._query = parseQueryString(url.search);
-
-    if (!Boolean(this._headers['host'])) {
-      this._host = url.host;
-    }
   }
 
   set dest(value: string) {
@@ -143,7 +126,9 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
     const combinedQuery = Object.assign({}, destQuery, this.query);
     destUrl.search = formatQueryString(combinedQuery) ?? '';
 
-    this.applyUrl(destUrl);
+    this._pathname = destUrl.pathname;
+    this._query = parseQueryString(destUrl.search);
+    this._host = destUrl.host;
   }
 
   get dest(): string {
@@ -152,8 +137,19 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
 
 }
 
-export function requestToRouteMatcherContext(request: Request): RouteMatcherContext {
+
+export function createRouteMatcherContext(input: RequestInfo | URL, init?: RequestInit): RouteMatcherContext {
+
+  const request = (input instanceof Request && init == null) ?
+    input.clone() :
+    new Request(input, init);
+
   return new RouteMatcherContextFromRequest(request);
+
+}
+
+export function requestToRouteMatcherContext(request: Request): RouteMatcherContext {
+  return createRouteMatcherContext(request);
 }
 
 export function routeMatcherContextToRequest(routeMatcherContext: RouteMatcherContext): Request {

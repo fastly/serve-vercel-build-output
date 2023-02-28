@@ -13,7 +13,7 @@ import {
   matchRoute,
   testRoute,
 } from "../../../src/utils/routing";
-import { requestToRouteMatcherContext } from "../../../src/routing/RouteMatcherContext";
+import { createRouteMatcherContext } from "../../../src/routing/RouteMatcherContext";
 
 describe('utils/routing', function() {
   describe('resolveRouteParameters', function () {
@@ -40,13 +40,13 @@ describe('utils/routing', function() {
         ;
 
         let result;
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/foo/' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/foo/' ));
         assert.ok(result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/' ));
         assert.ok(!result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/foo' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/foo' ));
         assert.ok(!result);
 
       });
@@ -58,10 +58,10 @@ describe('utils/routing', function() {
           dest: '/$nextLocale/routing/dynamic/catchall/[...args]?args=$args'
         };
 
-        let result1 = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/foo/' )));
+        let result1 = testRoute(route, createRouteMatcherContext( 'https://www.example.com/foo/' ));
         assert.ok(!result1);
 
-        const result2 = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/fr/routing/dynamic/catchall/foo' )));
+        const result2 = testRoute(route, createRouteMatcherContext( 'https://www.example.com/fr/routing/dynamic/catchall/foo' ));
         assert.ok(result2);
 
         const { keys, match } = result2;
@@ -80,10 +80,10 @@ describe('utils/routing', function() {
         };
 
         let result;
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/' ));
         assert.ok(result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/', { method: 'POST' } )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/', { method: 'POST' } ));
         assert.ok(result);
 
       });
@@ -96,10 +96,10 @@ describe('utils/routing', function() {
         };
 
         let result;
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/' ));
         assert.ok(result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/', { method: 'POST' } )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/', { method: 'POST' } ));
         assert.ok(!result);
 
       });
@@ -115,10 +115,10 @@ describe('utils/routing', function() {
         };
 
         let result;
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/' ));
         assert.ok(result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'foo' }  } )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'foo' }  } ));
         assert.ok(result);
 
       });
@@ -136,10 +136,10 @@ describe('utils/routing', function() {
         };
 
         let result;
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/' ));
         assert.ok(!result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'foo' } } )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'foo' } } ));
         assert.ok(result);
 
       });
@@ -158,13 +158,13 @@ describe('utils/routing', function() {
         };
 
         let result;
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/' )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/' ));
         assert.ok(!result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'foo' } } )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'foo' } } ));
         assert.ok(result);
 
-        result = testRoute(route, requestToRouteMatcherContext(new Request( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'bar' } } )));
+        result = testRoute(route, createRouteMatcherContext( 'https://www.example.com/', { method: 'POST', headers: { 'x-nextjs-data': 'bar' } } ));
         assert.ok(!result);
 
       });
@@ -207,7 +207,7 @@ describe('utils/routing', function() {
         null,
         0,
         route,
-        requestToRouteMatcherContext(new Request( 'https://www.example.com/foo' )),
+          createRouteMatcherContext( 'https://www.example.com/foo' ),
       );
 
       assert.ok(!matchResult);
@@ -229,7 +229,7 @@ describe('utils/routing', function() {
         null,
         0,
         route,
-        requestToRouteMatcherContext(new Request( 'https://www.example.com/foo' )),
+          createRouteMatcherContext( 'https://www.example.com/foo' ),
         (middlewarePath) => {
           middlewarePathCalled = middlewarePath;
           return {
@@ -283,7 +283,7 @@ describe('utils/routing', function() {
         'filesystem',
         0,
         route,
-        requestToRouteMatcherContext(new Request( 'https://www.example.com/foo' )),
+          createRouteMatcherContext( 'https://www.example.com/foo' ),
         (middlewarePath) => {
           middlewarePathCalled = middlewarePath;
           return {
