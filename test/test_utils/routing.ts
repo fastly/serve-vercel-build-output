@@ -9,9 +9,16 @@ import RouteMatcher from "../../src/routing/RouteMatcher";
 
 export function loadRouteMatcher(fixtureRoot: string) {
 
-  const routesCollection = loadRoutesCollection(path.resolve(fixtureRoot, './config.json'));
+  const fixtureAssets = loadFixtureAssets(path.resolve(fixtureRoot, 'output'));
+
+  const configJsonAsset = fixtureAssets['/config.json'];
+  if(configJsonAsset == null || configJsonAsset.type !== 'string') {
+    throw new Error('Unable to load config.json');
+  }
+
+  const assetsCollection = new AssetsCollection(fixtureAssets);
+  const routesCollection = loadRoutesCollection(configJsonAsset.content);
   const routeMatcher = new RouteMatcher(routesCollection);
-  const assetsCollection = loadAssetsCollection(path.resolve(fixtureRoot, 'output'));
   routeMatcher.onCheckFilesystem =
     pathname => assetsCollection.getAsset(pathname) != null;
 
@@ -19,22 +26,21 @@ export function loadRouteMatcher(fixtureRoot: string) {
 
 }
 
-export function loadRoutesCollection(configFilePath: string) {
+export function loadRoutesCollection(configJson: string) {
 
-  const configJson = fs.readFileSync(configFilePath, 'utf-8');
   const config = JSON.parse(configJson) as Config;
   return new RoutesCollection(config.routes ?? []);
 
 }
 
-export function loadAssetsCollection(rootPath: string) {
+export function loadFixtureAssets(rootPath: string) {
   const assetsMap: AssetsMap = {};
-  loadAssetsCollectionWorker(
+  loadFixtureAssetsWorker(
     assetsMap,
     rootPath,
     rootPath,
   );
-  return new AssetsCollection(assetsMap);
+  return assetsMap;
 }
 
 function moduleTest(path: string): boolean {
@@ -46,7 +52,7 @@ function moduleTest(path: string): boolean {
   return false;
 }
 
-function loadAssetsCollectionWorker(assetsMap: AssetsMap, rootPath: string, itemPath: string) {
+function loadFixtureAssetsWorker(assetsMap: AssetsMap, rootPath: string, itemPath: string) {
 
   if (!fs.existsSync(itemPath)) {
     return;
@@ -57,7 +63,7 @@ function loadAssetsCollectionWorker(assetsMap: AssetsMap, rootPath: string, item
 
     // is a dir
     for (const dirEntry of fs.readdirSync(itemPath)) {
-      loadAssetsCollectionWorker(assetsMap, rootPath, path.resolve(itemPath, dirEntry));
+      loadFixtureAssetsWorker(assetsMap, rootPath, path.resolve(itemPath, dirEntry));
     }
 
   } else {
