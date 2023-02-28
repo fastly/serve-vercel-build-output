@@ -96,13 +96,19 @@ export type RouterResultRequestHeaders = {
   requestHeaders: HttpHeaders;
 }
 
-export type RouterResultDest = RouterResultBase & RouterResultRequestHeaders & {
+export type RouterResultDest = {
   dest: string;
-  type: 'filesystem' | 'proxy';
 }
 
-export type RouterResultRedirect = RouterResultBase & {
-  dest: string;
+export type RouterResultFilesystem = RouterResultBase & RouterResultDest & RouterResultRequestHeaders & {
+  type: 'filesystem';
+}
+
+export type RouterResultProxy = RouterResultBase & RouterResultDest & RouterResultRequestHeaders & {
+  type: 'proxy';
+}
+
+export type RouterResultRedirect = RouterResultBase & RouterResultDest & {
   type: 'redirect';
 }
 
@@ -116,7 +122,7 @@ export type RouterResultError = RouterResultBase & {
   type: 'error';
 };
 
-export type RouterResult = RouterResultDest | RouterResultRedirect | RouterResultMiddleware | RouterResultError;
+export type RouterResult = RouterResultFilesystem | RouterResultProxy | RouterResultRedirect | RouterResultMiddleware | RouterResultError;
 
 export type MiddlewareHandler =
   (middlewarePath: string, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<MiddlewareResponse>;
