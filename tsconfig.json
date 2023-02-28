@@ -7,7 +7,9 @@
     "target": "es2020",
     "strict": true,
     "allowJs": true,
-    "forceConsistentCasingInFileNames": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "build/test"
   },
   "include": [
     "./src/**/*.ts",
