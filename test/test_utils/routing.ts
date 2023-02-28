@@ -1,13 +1,11 @@
 import fs from "fs";
 import path from "path";
 import type { Asset, AssetsMap } from "@fastly/compute-js-static-publish";
-import { mergeContentTypes, testFileContentType } from "@fastly/compute-js-static-publish/resources/default-content-types";
+import { defaultContentTypes, testFileContentType } from "@fastly/compute-js-static-publish/resources/default-content-types";
 import { Config } from "../../src/types/config";
 import RoutesCollection from "../../src/routing/RoutesCollection";
 import AssetsCollection from "../../src/assets/AssetsCollection";
 import RouteMatcher from "../../src/routing/RouteMatcher";
-
-const contentTypes = mergeContentTypes([]);
 
 export function loadRouteMatcher(fixtureRoot: string) {
 
@@ -65,7 +63,7 @@ function loadAssetsCollectionWorker(assetsMap: AssetsMap, rootPath: string, item
   } else {
 
     // is a file
-    const contentTypeResult = testFileContentType(contentTypes, itemPath);
+    const contentTypeResult = testFileContentType(defaultContentTypes, itemPath);
 
     let assetKey = itemPath.slice(rootPath.length);
     if (!assetKey.startsWith('/')) {
