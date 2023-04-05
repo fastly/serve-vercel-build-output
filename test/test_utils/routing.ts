@@ -1,8 +1,13 @@
 import assert from "assert";
 import fs from "fs";
 import path from "path";
-import type { Asset, AssetsMap } from "@fastly/compute-js-static-publish";
-import { defaultContentTypes, testFileContentType } from "@fastly/compute-js-static-publish/resources/default-content-types";
+import {
+  ContentAssetMetadataMap,
+  ContentAssets,
+  ModuleAssetMap,
+  ModuleAssets,
+  testFileContentType
+} from "@fastly/compute-js-static-publish";
 import { Config } from "../../src/types/config";
 import RoutesCollection from "../../src/routing/RoutesCollection";
 import AssetsCollection from "../../src/assets/AssetsCollection";
@@ -22,14 +27,15 @@ import { deepStrictEqualNullProto } from "./assert";
 export function loadRouteMatcher(fixtureRoot: string) {
 
   const fixtureAssets = loadFixtureAssets(path.resolve(fixtureRoot, 'output'));
+  const { contentAssets, moduleAssets } = fixtureAssets;
 
-  const configJsonAsset = fixtureAssets['/config.json'];
+  const configJsonAsset = contentAssets.getAsset('/config.json');
   if(configJsonAsset == null || configJsonAsset.type !== 'string') {
     throw new Error('Unable to load config.json');
   }
 
-  const assetsCollection = new AssetsCollection(fixtureAssets);
-  const routesCollection = loadRoutesCollection(configJsonAsset.content);
+  const assetsCollection = new AssetsCollection(contentAssets, moduleAssets);
+  const routesCollection = loadRoutesCollection(configJsonAsset.getText());
   const routeMatcher = new RouteMatcher(routesCollection);
   routeMatcher.onCheckFilesystem =
     pathname => assetsCollection.getAsset(pathname) != null;
@@ -46,25 +52,27 @@ export function loadRoutesCollection(configJson: string) {
 }
 
 export function loadFixtureAssets(rootPath: string) {
-  const assetsMap: AssetsMap = {};
+
+  const contentAssetMap: ContentAssetMetadataMap = {};
+  const moduleAssetMap: ModuleAssetMap = {};
   loadFixtureAssetsWorker(
-    assetsMap,
+    contentAssetMap,
+    moduleAssetMap,
     rootPath,
     rootPath,
   );
-  return assetsMap;
+
+  const contentAssets = new ContentAssets(contentAssetMap);
+  const moduleAssets = new ModuleAssets(moduleAssetMap);
+  return { contentAssets, moduleAssets };
 }
 
-function moduleTest(path: string): boolean {
-  if (path.startsWith('/functions/') &&
-    (path.endsWith('.js') || path.endsWith('.mjs') || path.endsWith('.cjs'))
-  ) {
-    return true;
-  }
-  return false;
-}
-
-function loadFixtureAssetsWorker(assetsMap: AssetsMap, rootPath: string, itemPath: string) {
+function loadFixtureAssetsWorker(
+  contentAssetMap: ContentAssetMetadataMap,
+  moduleAssetMap: ModuleAssetMap,
+  rootPath: string,
+  itemPath: string,
+) {
 
   if (!fs.existsSync(itemPath)) {
     return;
@@ -72,49 +80,72 @@ function loadFixtureAssetsWorker(assetsMap: AssetsMap, rootPath: string, itemPat
 
   const stats = fs.statSync(itemPath);
   if (stats.isDirectory()) {
-
     // is a dir
+
     for (const dirEntry of fs.readdirSync(itemPath)) {
-      loadFixtureAssetsWorker(assetsMap, rootPath, path.resolve(itemPath, dirEntry));
+      loadFixtureAssetsWorker(
+        contentAssetMap,
+        moduleAssetMap,
+        rootPath,
+        path.resolve(itemPath, dirEntry),
+      );
     }
 
   } else {
-
     // is a file
-    const contentTypeResult = testFileContentType(defaultContentTypes, itemPath);
 
     let assetKey = itemPath.slice(rootPath.length);
     if (!assetKey.startsWith('/')) {
       assetKey = '/' + assetKey;
     }
 
-    let asset: Asset;
+    const contentTypeResult = testFileContentType(null, itemPath);
+    if (contentTypeResult?.text) {
 
-    if (contentTypeResult == null || contentTypeResult.binary) {
-
-      asset = {
-        type: 'binary',
-        content: fs.readFileSync(itemPath),
-        contentType: contentTypeResult?.type ?? 'application/octet-stream',
-        module: null,
-        loadModule: null,
-        isStatic: false,
+      contentAssetMap[assetKey] = {
+        type: 'string',
+        assetKey,
+        contentType: contentTypeResult.contentType ?? 'text/plain',
+        text: true,
+        lastModifiedTime: 0,
+        fileInfo: {
+          content: fs.readFileSync(itemPath, 'utf-8'),
+          size: 0,
+          hash: '',
+        },
+        compressedFileInfos: {},
       };
+
+      const isModule = (
+        assetKey.startsWith('/functions/') &&
+        (assetKey.endsWith('.js') || assetKey.endsWith('.mjs') || assetKey.endsWith('.cjs'))
+      );
+
+      if (isModule) {
+        moduleAssetMap[assetKey] = {
+          isStaticImport: false,
+          loadModule: () => import(itemPath),
+          module: undefined,
+        };
+      }
 
     } else {
 
-      asset = {
-        type: 'string',
-        content: fs.readFileSync(itemPath, 'utf-8'),
-        contentType: contentTypeResult?.type ?? 'text/plain',
-        module: null,
-        loadModule: moduleTest(assetKey) ? () => import(itemPath) : null,
-        isStatic: false,
+      contentAssetMap[assetKey] = {
+        type: 'bytes',
+        assetKey,
+        contentType: contentTypeResult?.contentType ?? 'application/octet-stream',
+        text: false,
+        lastModifiedTime: 0,
+        fileInfo: {
+          bytes: fs.readFileSync(itemPath),
+          size: 0,
+          hash: '',
+        },
+        compressedFileInfos: {},
       };
 
     }
-
-    assetsMap[assetKey] = asset;
   }
 }
 

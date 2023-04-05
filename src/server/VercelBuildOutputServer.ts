@@ -1,5 +1,5 @@
 import { env } from "fastly:env";
-import { AssetsMap } from "@fastly/compute-js-static-publish";
+import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import { Config } from "../types/config";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine";
 import AssetsCollection from "../assets/AssetsCollection";
@@ -13,8 +13,6 @@ import {
   routeMatcherContextToRequest
 } from "../routing/RouteMatcherContext";
 import FunctionAsset from "../assets/FunctionAsset";
-import StaticBinaryAsset from "../assets/StaticBinaryAsset";
-import StaticStringAsset from "../assets/StaticStringAsset";
 import RouteMatcher from "../routing/RouteMatcher";
 import { processMiddlewareResponse } from "../utils/middleware";
 import ILogger from "../logging/ILogger";
@@ -24,10 +22,12 @@ import { getBackendInfo } from "../utils/backends";
 import { generateRequestId } from "../utils";
 import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors";
 import { arrayToReadableStream } from "../utils/stream";
+import StaticAsset from "../assets/StaticAsset";
 
 export type ServerInit = {
   modulePath?: string,
-  assets: AssetsMap,
+  contentAssets: ContentAssets,
+  moduleAssets: ModuleAssets,
   config: Config,
   backends?: BackendsDefs,
 };
@@ -63,7 +63,11 @@ export default class VercelBuildOutputServer {
     RouteSrcMatcher.init(this._routesCollection.routes);
 
     this._templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
-    this._assetsCollection = new AssetsCollection(init.assets, config.overrides);
+    this._assetsCollection = new AssetsCollection(
+      init.contentAssets,
+      init.moduleAssets,
+      config.overrides,
+    );
 
     this._backends = {};
     if (init.backends === 'dynamic') {
@@ -411,8 +415,9 @@ export default class VercelBuildOutputServer {
       const func = (await asset.loadModule()).default as EdgeFunction;
       return func(request, edgeFunctionContext);
     }
-    if (asset instanceof StaticBinaryAsset || asset instanceof StaticStringAsset) {
-      return new Response(asset.content, {
+    if (asset instanceof StaticAsset) {
+      const storeEntry = await asset.contentAsset.getStoreEntry();
+      return new Response(storeEntry.body, {
         status: 200,
         headers: {
           'Content-Type': asset.contentType,

@@ -1,8 +1,6 @@
-import { AssetsMap } from "@fastly/compute-js-static-publish";
+import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import { PathOverride } from "../types/config";
 import AssetBase from "./AssetBase";
-import StaticBinaryAsset from "./StaticBinaryAsset";
-import StaticStringAsset from "./StaticStringAsset";
 import FunctionAsset, { VercelFunctionConfig } from "./FunctionAsset";
 import StaticAsset from "./StaticAsset";
 
@@ -21,12 +19,19 @@ export default class AssetsCollection {
   assets: Record<string, AssetBase>;
 
   constructor(
-    assetsMap: AssetsMap,
+    contentAssets: ContentAssets,
+    moduleAssets: ModuleAssets,
     overrides?: Record<string, PathOverride>,
   ) {
     this.assets = {};
 
-    for (const [key, value] of Object.entries(assetsMap)) {
+    for (const key of contentAssets.getAssetKeys()) {
+
+      const value = contentAssets.getAsset(key);
+      if (value == null) {
+        // shouldn't happen
+        continue;
+      }
 
       if(key.startsWith('/static/')) {
 
@@ -38,24 +43,24 @@ export default class AssetsCollection {
           continue;
         }
 
-        let asset;
-        if (value.type === 'binary') {
-          asset = new StaticBinaryAsset(assetKey, value);
-        } else {
-          asset = new StaticStringAsset(assetKey, value);
-        }
-        this.assets[assetKey] = asset;
+
+        this.assets[assetKey] = new StaticAsset(assetKey, value);
 
       }
 
       if (key.startsWith('/functions/') && key.endsWith('.func/.vc-config.json')) {
 
-        if (value.type !== 'string') {
-          // shouldn't happen, but if type isn't string, then give up
+        if (!value.getMetadata().text) {
+          // shouldn't happen, but if the content isn't text, then give up
           continue;
         }
 
-        const vcConfigStr = value.content;
+        if (!value.isLocal) {
+          // vc-config.json must be locally available
+          throw new Error('.vc-config.json must be locally available.');
+        }
+
+        const vcConfigStr = value.getText();
         const vcConfig = JSON.parse(vcConfigStr) as VercelFunctionConfig;
 
         let functionName = vcConfig.name;
@@ -67,7 +72,7 @@ export default class AssetsCollection {
         }
 
         const entrypoint = `/functions/${functionName}.func/` + (vcConfig.entrypoint ?? 'index.js');
-        const functionAsset = assetsMap[entrypoint];
+        const functionAsset = moduleAssets.getAsset(entrypoint);
         if (functionAsset == null) {
           // shouldn't happen
           console.warn( 'Entry point ' + entrypoint + ' does not exist');

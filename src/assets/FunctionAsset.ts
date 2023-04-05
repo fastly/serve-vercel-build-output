@@ -1,4 +1,4 @@
-import { Asset } from "@fastly/compute-js-static-publish";
+import { ModuleAsset } from "@fastly/compute-js-static-publish";
 import AssetBase from "./AssetBase";
 
 export type VercelFunctionConfig = {
@@ -11,27 +11,19 @@ export type VercelFunctionConfig = {
 };
 
 export default class FunctionAsset extends AssetBase {
-  private readonly _moduleLoader: (() => Promise<any>) | undefined;
+  private readonly asset: ModuleAsset;
 
   async loadModule(): Promise<any> {
-    if (this._moduleLoader == null) {
-      throw new Error('Asset ' + this.key + ' cannot be loaded as a module');
-    }
-    return this._moduleLoader();
+    // getModule() is smart enough to return the same promise on multiple
+    // invocations.
+    return this.asset.getModule();
   }
 
   vcConfig: VercelFunctionConfig;
 
-  constructor(key: string, asset: Asset, vcConfig: VercelFunctionConfig) {
+  constructor(key: string, asset: ModuleAsset, vcConfig: VercelFunctionConfig) {
     super(key);
-
-    if (asset.loadModule != null) {
-      this._moduleLoader = asset.loadModule;
-    } else if (asset.module != null) {
-      const promise = new Promise<any>(resolve => resolve(asset.module));
-      this._moduleLoader = () => promise;
-    }
-
+    this.asset = asset;
     this.vcConfig = vcConfig;
   }
 }

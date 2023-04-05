@@ -1,15 +1,14 @@
-import { Asset } from "@fastly/compute-js-static-publish";
+import { ContentAsset } from "@fastly/compute-js-static-publish";
 import AssetBase from "./AssetBase";
 
 export default class StaticAsset extends AssetBase {
-  type: "string" | "binary";
-
   contentType: string;
+  contentAsset: ContentAsset;
 
-  constructor(key: string, asset: Asset) {
+  constructor(key: string, asset: ContentAsset) {
     super(key);
-    this.type = asset.type;
-    this.contentType = asset.contentType;
+    this.contentType = asset.getMetadata().contentType;
+    this.contentAsset = asset;
   }
 }
 
