@@ -293,6 +293,20 @@
       "dest": "/16-j.html"
     },
     {
+      "src": "/17-a.html",
+      "dest": "/17-d.html"
+    },
+    {
+      "src": "/17-b.html",
+      "dest": "/17-d.html",
+      "continue": true
+    },
+    {
+      "src": "/17-c.html",
+      "dest": "/17-d.html",
+      "check": true
+    },
+    {
       "handle": "filesystem"
     },
     {
@@ -564,6 +578,14 @@
       }
     },
     {
+      "src": "/17-d.html",
+      "dest": "/17-e.html",
+      "headers": {
+        "17-d-filesystem": "17-e",
+        "17-d": "filesystem"
+      }
+    },
+    {
       "handle": "rewrite"
     },
     {
@@ -725,6 +747,14 @@
     {
       "src": "/15-a.html",
       "dest": "/15-b.html"
+    },
+    {
+      "src": "/17-d.html",
+      "dest": "/17-f.html",
+      "headers": {
+        "17-d-rewrite": "17-f",
+        "17-d": "rewrite"
+      }
     },
     {
       "handle": "hit"
@@ -904,6 +934,34 @@
       "src": "/16-j.html",
       "headers": {
         "miss-16-j": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-a.html",
+      "headers": {
+        "miss-17-a": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-b.html",
+      "headers": {
+        "miss-17-b": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-c.html",
+      "headers": {
+        "miss-17-c": "1"
+      },
+      "continue": true
+    },
+    {
+      "src": "/17-d.html",
+      "headers": {
+        "miss-17-d": "1"
       },
       "continue": true
     },
