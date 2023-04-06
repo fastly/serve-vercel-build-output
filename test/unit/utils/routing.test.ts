@@ -12,8 +12,8 @@ import {
   isURL,
   matchRoute,
   testRoute,
-} from "../../../src/utils/routing";
-import { createRouteMatcherContext } from "../../../src/routing/RouteMatcherContext";
+} from "../../../src/utils/routing.js";
+import { createRouteMatcherContext } from "../../../src/routing/RouteMatcherContext.js";
 
 describe('utils/routing', function() {
   describe('resolveRouteParameters', function () {

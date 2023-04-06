@@ -1,7 +1,7 @@
-import ILogger from "./ILogger";
-import ILoggerProvider from "./ILoggerProvider";
-import NullLogger from "./NullLogger";
-import ComputeJsConsoleLoggerProvider, { LogLevel, LoggerDef, LoggerDefs } from "./ComputeJsConsoleLoggerProvider";
+import ILogger from "./ILogger.js";
+import ILoggerProvider from "./ILoggerProvider.js";
+import NullLogger from "./NullLogger.js";
+import ComputeJsConsoleLoggerProvider, { LogLevel, LoggerDef, LoggerDefs } from "./ComputeJsConsoleLoggerProvider.js";
 
 export {
   ILogger,

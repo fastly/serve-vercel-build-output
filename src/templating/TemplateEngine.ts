@@ -25,7 +25,7 @@ export default class TemplateEngine {
     while (templatePath !== '/' && templatePath.endsWith('/')) {
       templatePath = templatePath.slice(0, -1);
     }
-    templatePath = templatePath += '/resources/templates';
+    templatePath = templatePath + '/resources/templates';
 
     for (const templateName of templateNames) {
       const bytes = includeBytes( `${templatePath}/${templateName}.jst` );

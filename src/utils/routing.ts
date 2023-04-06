@@ -1,15 +1,15 @@
 import cookie from 'cookie';
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
-import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import RouteSrcMatcher from "../routing/RouteSrcMatcher";
+import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
+import RouteSrcMatcher from "../routing/RouteSrcMatcher.js";
 import {
   HttpHeaders,
   MiddlewareHandler,
   PhaseResult,
   RouteMatchResult,
   ValuesAndReplacements
-} from "../types/routing";
-import { formatQueryString, parseQueryString } from "./query";
+} from "../types/routing.js";
+import { formatQueryString, parseQueryString } from "./query.js";
 
 type HasFieldEntry = NonNullable<RouteWithSrc['has']>[number];
 

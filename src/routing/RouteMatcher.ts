@@ -1,6 +1,6 @@
 import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
-import RoutesCollection from "./RoutesCollection";
-import { RouteMatcherContext } from "./RouteMatcherContext";
+import RoutesCollection from "./RoutesCollection.js";
+import { RouteMatcherContext } from "./RouteMatcherContext.js";
 import {
   HttpHeaders,
   MiddlewareHandler,
@@ -9,11 +9,11 @@ import {
   PhaseRoutesResult,
   RouteMatchResult,
   RouterResult,
-} from "../types/routing";
-import { applyRouteResults, matchRoute } from "../utils/routing";
-import ILogger from "../logging/ILogger";
-import ILoggerProvider from "../logging/ILoggerProvider";
-import { PromiseOrValue } from "../utils/misc";
+} from "../types/routing.js";
+import { applyRouteResults, matchRoute } from "../utils/routing.js";
+import ILogger from "../logging/ILogger.js";
+import ILoggerProvider from "../logging/ILoggerProvider.js";
+import { PromiseOrValue } from "../utils/misc.js";
 
 export type InitHeadersHandler = () => PromiseOrValue<HttpHeaders>;
 

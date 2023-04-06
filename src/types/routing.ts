@@ -1,6 +1,6 @@
 import { HandleValue, Route, RouteWithSrc } from "@vercel/routing-utils";
-import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import { PromiseOrValue } from "../utils/misc";
+import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
+import { PromiseOrValue } from "../utils/misc.js";
 
 export type HttpHeaders = Record<string, string>;
 export type HttpCookies = Record<string, string>;

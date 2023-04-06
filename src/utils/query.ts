@@ -1,4 +1,4 @@
-import { HttpHeaders } from "../types/routing";
+import { HttpHeaders } from "../types/routing.js";
 
 /**
  * Converts a Headers object to a dictionary

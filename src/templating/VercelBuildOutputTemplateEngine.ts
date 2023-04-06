@@ -1,4 +1,4 @@
-import TemplateEngine from "./TemplateEngine";
+import TemplateEngine from "./TemplateEngine.js";
 
 // All known template names
 // TODO(?): enumerate from file system

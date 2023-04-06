@@ -1,4 +1,4 @@
-import { PromiseOrValue } from "./misc";
+import { PromiseOrValue } from "./misc.js";
 
 export function arrayToReadableStream(promiseOrArray: PromiseOrValue<Uint8Array>): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({

@@ -1,4 +1,4 @@
-import { BackendInfo, Backends } from "../server/types";
+import { BackendInfo, Backends } from "../server/types.js";
 
 function findBackendInfo(backends: Backends, url: string) {
   for (const [backendName, backend] of Object.entries(backends)) {

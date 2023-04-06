@@ -1,5 +1,9 @@
-import path from "path";
-import { loadChecksFile, loadRouteMatcher, performChecks } from "../../../test_utils/routing";
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+import { loadChecksFile, loadRouteMatcher, performChecks } from "../../../test_utils/routing.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe(`${__dirname.split(path.sep).pop()}`, function() {
 

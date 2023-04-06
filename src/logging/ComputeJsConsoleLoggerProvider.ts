@@ -1,6 +1,6 @@
-import ILoggerProvider from "./ILoggerProvider";
-import ILogger from "./ILogger";
-import NullLogger from "./NullLogger";
+import ILoggerProvider from "./ILoggerProvider.js";
+import ILogger from "./ILogger.js";
+import NullLogger from "./NullLogger.js";
 
 export enum LogLevel {
   DEBUG = 0,

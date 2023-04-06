@@ -1,5 +1,5 @@
-import { RouteMatcherContext } from "../routing/RouteMatcherContext";
-import { RouterResult } from "../types/routing";
+import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
+import { RouterResult } from "../types/routing.js";
 
 export type BackendDef = {
   url: string,

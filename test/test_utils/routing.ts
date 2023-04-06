@@ -8,11 +8,11 @@ import {
   ModuleAssets,
   testFileContentType
 } from "@fastly/compute-js-static-publish";
-import { Config } from "../../src/types/config";
-import RoutesCollection from "../../src/routing/RoutesCollection";
-import AssetsCollection from "../../src/assets/AssetsCollection";
-import RouteMatcher from "../../src/routing/RouteMatcher";
-import { createRouteMatcherContext } from "../../src/routing/RouteMatcherContext";
+import { Config } from "../../src/types/config.js";
+import RoutesCollection from "../../src/routing/RoutesCollection.js";
+import AssetsCollection from "../../src/assets/AssetsCollection.js";
+import RouteMatcher from "../../src/routing/RouteMatcher.js";
+import { createRouteMatcherContext } from "../../src/routing/RouteMatcherContext.js";
 import {
   HttpHeaders,
   RouterResult,
@@ -20,9 +20,9 @@ import {
   RouterResultDest,
   RouterResultError,
   RouterResultFilesystem
-} from "../../src/types/routing";
-import { Holder } from "../../src/utils/misc";
-import { deepStrictEqualNullProto } from "./assert";
+} from "../../src/types/routing.js";
+import { Holder } from "../../src/utils/misc.js";
+import { deepStrictEqualNullProto } from "./assert.js";
 
 export function loadRouteMatcher(fixtureRoot: string) {
 

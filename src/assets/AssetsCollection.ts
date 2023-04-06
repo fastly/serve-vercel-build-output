@@ -1,8 +1,8 @@
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
-import { PathOverride } from "../types/config";
-import AssetBase from "./AssetBase";
-import FunctionAsset, { VercelFunctionConfig } from "./FunctionAsset";
-import StaticAsset from "./StaticAsset";
+import { PathOverride } from "../types/config.js";
+import AssetBase from "./AssetBase.js";
+import FunctionAsset, { VercelFunctionConfig } from "./FunctionAsset.js";
+import StaticAsset from "./StaticAsset.js";
 
 function adjustIndexPathname(pathname: string) {
   let adjustedPathname = pathname;

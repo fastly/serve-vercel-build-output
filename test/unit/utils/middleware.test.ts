@@ -3,7 +3,7 @@
 
 import * as assert from 'assert';
 
-import { processMiddlewareResponse } from "../../../src/utils/middleware";
+import { processMiddlewareResponse } from "../../../src/utils/middleware.js";
 
 describe('utils/middleware', function() {
   describe('processMiddlewareResponse', function() {

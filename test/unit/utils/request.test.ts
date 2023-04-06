@@ -3,7 +3,7 @@
 
 import * as assert from "assert";
 
-import { generateRequestId } from "../../../src/utils/request";
+import { generateRequestId } from "../../../src/utils/request.js";
 
 describe('utils/request', function() {
   describe('generateRequestId', function() {

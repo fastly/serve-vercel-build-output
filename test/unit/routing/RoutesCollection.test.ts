@@ -3,11 +3,14 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import * as assert from 'assert';
 import { Route } from '@vercel/routing-utils';
 
-import RoutesCollection from '../../../src/routing/RoutesCollection';
-import { Config } from '../../../src/types/config';
+import RoutesCollection from '../../../src/routing/RoutesCollection.js';
+import { Config } from '../../../src/types/config.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('routing/RoutesCollection', function() {
   describe('RoutesCollection', function() {

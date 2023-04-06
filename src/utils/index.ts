@@ -1,4 +1,4 @@
-import { generateRequestId } from "./request";
+import { generateRequestId } from "./request.js";
 
 export {
   generateRequestId,

@@ -1,8 +1,8 @@
 import cookie from 'cookie';
-import { formatQueryString, headersToObject, parseQueryString } from "../utils/query";
-import { HttpCookies, HttpHeaders, Query } from "../types/routing";
-import { arrayToReadableStream, readableStreamToArray } from "../utils/stream";
-import { isURL } from "../utils/routing";
+import { formatQueryString, headersToObject, parseQueryString } from "../utils/query.js";
+import { HttpCookies, HttpHeaders, Query } from "../types/routing.js";
+import { arrayToReadableStream, readableStreamToArray } from "../utils/stream.js";
+import { isURL } from "../utils/routing.js";
 
 export interface RouteMatcherContext {
 

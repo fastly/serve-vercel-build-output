@@ -1,28 +1,28 @@
 import { env } from "fastly:env";
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
-import { Config } from "../types/config";
-import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine";
-import AssetsCollection from "../assets/AssetsCollection";
-import RoutesCollection from "../routing/RoutesCollection";
-import RouteSrcMatcher from "../routing/RouteSrcMatcher";
-import { HttpHeaders, RouterResultDest, RouterResultMiddleware } from "../types/routing";
-import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext } from "./types";
+import { Config } from "../types/config.js";
+import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
+import AssetsCollection from "../assets/AssetsCollection.js";
+import RoutesCollection from "../routing/RoutesCollection.js";
+import RouteSrcMatcher from "../routing/RouteSrcMatcher.js";
+import { HttpHeaders, RouterResultDest, RouterResultMiddleware } from "../types/routing.js";
+import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext } from "./types.js";
 import {
   createRouteMatcherContext,
   RouteMatcherContext,
   routeMatcherContextToRequest
-} from "../routing/RouteMatcherContext";
-import FunctionAsset from "../assets/FunctionAsset";
-import RouteMatcher from "../routing/RouteMatcher";
-import { processMiddlewareResponse } from "../utils/middleware";
-import ILogger from "../logging/ILogger";
-import { headersToObject } from "../utils/query";
-import ILoggerProvider from "../logging/ILoggerProvider";
-import { getBackendInfo } from "../utils/backends";
-import { generateRequestId } from "../utils";
-import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors";
-import { arrayToReadableStream } from "../utils/stream";
-import StaticAsset from "../assets/StaticAsset";
+} from "../routing/RouteMatcherContext.js";
+import FunctionAsset from "../assets/FunctionAsset.js";
+import RouteMatcher from "../routing/RouteMatcher.js";
+import { processMiddlewareResponse } from "../utils/middleware.js";
+import ILogger from "../logging/ILogger.js";
+import { headersToObject } from "../utils/query.js";
+import ILoggerProvider from "../logging/ILoggerProvider.js";
+import { getBackendInfo } from "../utils/backends.js";
+import { generateRequestId } from "../utils/request.js";
+import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors.js";
+import { arrayToReadableStream } from "../utils/stream.js";
+import StaticAsset from "../assets/StaticAsset.js";
 
 export type ServerInit = {
   modulePath?: string,

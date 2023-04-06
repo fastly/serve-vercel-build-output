@@ -1,5 +1,5 @@
-import { HttpHeaders, MiddlewareResponse } from "../types/routing";
-import { relativizeURL } from "./routing";
+import { HttpHeaders, MiddlewareResponse } from "../types/routing.js";
+import { relativizeURL } from "./routing.js";
 
 export function processMiddlewareResponse(response: Response, initUrl: string | URL): MiddlewareResponse {
 

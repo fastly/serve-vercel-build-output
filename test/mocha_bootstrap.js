@@ -3,14 +3,14 @@
  * Licensed under the MIT license. See LICENSE file for details.
  */
 
-const crypto = require('node:crypto').webcrypto;
+import { webcrypto as crypto } from 'node:crypto';
 
-exports.mochaGlobalSetup = () => {
+export const mochaGlobalSetup = () => {
   globalThis.crypto = crypto;
 };
 
 // Restores the default sandbox after every test
-exports.mochaHooks = {
+export const mochaHooks = {
   beforeEach() {
     onBeforeEach();
   },
