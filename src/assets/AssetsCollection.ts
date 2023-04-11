@@ -85,26 +85,34 @@ export default class AssetsCollection {
 
     }
 
-    // It's hard to tell what the right behavior is here...
+    // SPEC: https://vercel.com/docs/build-output-api/v3/configuration#overrides
+    // The overrides property allows for overriding the output of one or more static files contained
+    // within the .vercel/output/static directory.
     if (overrides != null) {
+      // Note Object.entries() returns items in insertion order.
       for (const [key, value] of Object.entries(overrides)) {
         const existingAsset = this.assets[key];
         if (!(existingAsset instanceof StaticAsset)) {
-          // ignore it if it doesn't exist
+          // ignore it if it doesn't exist or if it isn't a static asset
           continue;
         }
 
-        // for now, we're going to adjust the existing entry
+        // override the content type if it's defined
         if (value.contentType != null) {
           existingAsset.contentType = value.contentType;
         }
 
-        // for now, we're going to add another entry to map to the same item
+        // Replace the entry
+        // NOTE: This means the asset can no longer be accessed using the original asset key.
+        // NOTE: If a later override maps to replaced entry of an earlier one, then the replacements
+        // are chained. The asset cannot be accessed using the intermediary asset keys.
+        // NOTE: If two or more overrides have the same replacement value, the last one stands, and
+        // the asset that was replaced by all but the last override can no longer be accessed!
+        // This is because overrides are applied in insertion order.
         if (value.path != null) {
           const assetKey = adjustIndexPathname(value.path);
-          if (this.assets[assetKey] == null) {
-            this.assets[assetKey] = existingAsset;
-          }
+          this.assets[assetKey] = existingAsset;
+          delete this.assets[key];
         }
       }
     }
