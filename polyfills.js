@@ -62,12 +62,3 @@ globalThis.Headers.prototype.getAll = function(key) {
 
     return resultingValues;
 };
-
-// __import_unsupported
-const oldObjectDefineProperty = Object.defineProperty;
-Object.defineProperty = (...args) => {
-    if(args[0] === globalThis && args[1] === '__import_unsupported') {
-        Object.assign(args[2], {configurable: true});
-    }
-    oldObjectDefineProperty.apply(Object, args);
-};
