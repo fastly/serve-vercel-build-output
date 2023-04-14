@@ -62,3 +62,8 @@ globalThis.Headers.prototype.getAll = function(key) {
 
     return resultingValues;
 };
+
+// Response.json (static)
+globalThis.Response.json = function(data, init) {
+    return new Response(JSON.stringify(data), init);
+};
