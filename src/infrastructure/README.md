@@ -1,3 +1,51 @@
+# Vercel Network Infrastructure Steps
+
+### Edge Middleware
+
+https://vercel.com/docs/concepts/functions/edge-middleware
+
+This step represents the first level of execution in the Vercel infrastructure.
+
+It handles actions such as:
+
+* Redirects
+* Rewrites
+* Headers
+* A/B Testing
+* Feature Flags
+
+This step needs access to:
+
+* Router Config
+* Known Asset Keys
+* Function Assets (Edge Middleware)
+
+When an incoming request is made, the request is put through a routing mechanism.
+
+The routing mechanism happens in phases, during which the request is checked against a series
+of rules each having conditions such as matching request URLs or request headers, and an
+action, which is defined either in the route rule or as an author-provided middleware function.
+
+In the end, the routing result is one of the following:
+
+* Middleware response (Author-provided Middleware Function returned response)
+* Redirect response (30x, asks user agent to try a different URL)
+* Proxy response (Redirect would point outside current domain)
+* Error response (500, 502, 404, etc)
+    * Note that a 404 means the item didn't match a known asset key. The request never makes
+      it to the next step of the infrastructure in that case.
+* Filesystem result (Request matches an Asset Key)
+
+For all cases other than a filesystem result, we simply return the response to the caller.
+
+If the item is a filesystem result, we move to the next step in the infrastructure:
+Edge Network Cache
+
+#### Author-provided Middleware
+
+In order to call an author-provided middleware, we will use the Exec Layer. See Functions for
+a discussion on why.
+
 ### Edge Network Cache
 
 https://vercel.com/docs/concepts/edge-network/caching
@@ -17,12 +65,12 @@ either static or a function.
 
 * Static files: Vercel automatically caches at the edge after the first request.
   See [Static Files Caching](https://vercel.com/docs/concepts/edge-network/caching#static-files-caching)
-  * Vercel serves static files with `Cache-Control: public, max-age=0, must-revalidate` by default,
-    so that user agents don't cache them.
+    * Vercel serves static files with `Cache-Control: public, max-age=0, must-revalidate` by default,
+      so that user agents don't cache them.
 
 * Function responses
-  * [Caching Edge Function Responses](https://vercel.com/docs/concepts/functions/edge-functions/edge-caching)
-  * [Caching Serverless Function Responses](https://vercel.com/docs/concepts/functions/serverless-functions/edge-caching)
+    * [Caching Edge Function Responses](https://vercel.com/docs/concepts/functions/edge-functions/edge-caching)
+    * [Caching Serverless Function Responses](https://vercel.com/docs/concepts/functions/serverless-functions/edge-caching)
 
 In our implementation, static files never need to be fetched as they are always available
 (wasm-inline or object-store), and should always have a `X-Vercel-Cache: HIT`.
@@ -86,10 +134,49 @@ Vercel adds the following header value for `X-Vercel-Cache` depending on what ha
 * `HIT`: The response was served from the edge cache.
 * `STALE`: The response was served from the edge cache. A background request to the origin server was made to
   update the content.
-* `PRERENDER`: The response was served from static storage (prerender fallback). 
+* `PRERENDER`: The response was served from static storage (prerender fallback).
 * `REVALIDATED`: The response was served from the origin server and the cache was refreshed due to an authorization
   from the user in the incoming request.
 
 In our implementation, there would be some minor differences:
 
 * `MISS`: Never happens for static assets.
+
+### Functions
+
+https://vercel.com/docs/concepts/functions/serverless-functions
+https://vercel.com/docs/concepts/functions/edge-functions
+
+Functions are the deepest level of execution in the Vercel infrastructure.
+
+By this point it means the route matched a filesystem object, and that the object
+was not found in cache.
+
+* Serverless Function
+* Edge Function
+* API Route (Serverless function)
+* Server-Rendering (Serverless or edge function)
+* ISR (Serverless (or edge?) function)
+
+#### Edge Function
+
+These can be called simply by loading the Edge Function as a module asset,
+calling the export specified by the config file, and then returning the response.
+
+#### Serverless Function
+
+We can't really support these realistically. The best we can do is to support Next.js
+by running it in NextComputeJsServer for API Routes, Server-Rendering, and ISR.
+
+We cannot support other runtimes such as generic nodejs, go, ruby, etc.
+
+We can know that a function is a Next.js app by checking the `.vc-config.json` file
+for the following values:
+
+* `runtime`: Starts with `nodejs`
+* `handler`: `___next_launcher.cjs`
+
+#### NextComputeJsServer
+
+This is in @fastly/next-compute-js and currently supports the
+API Route and Server-Rendering features of Next 12.3.0 (but not ISR or Preview).
