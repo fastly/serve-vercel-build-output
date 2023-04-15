@@ -301,8 +301,8 @@ describe('routing/RouteMatcher', function () {
         assert.deepStrictEqual(routerResult.headers, {
           'foo': 'bar',
         });
-        assert.ok(routerResult.type === 'middleware');
-        assert.strictEqual(routerResult.middlewareResponse, response);
+        assert.ok(routerResult.type === 'synthetic');
+        assert.strictEqual(routerResult.syntheticResponse, response);
       });
 
       it('proxy result', async function () {

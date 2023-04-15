@@ -112,9 +112,9 @@ export type RouterResultRedirect = RouterResultBase & RouterResultDest & {
   type: 'redirect';
 }
 
-export type RouterResultMiddleware = RouterResultBase & RouterResultRequestHeaders & {
-  type: 'middleware';
-  middlewareResponse: Response;
+export type RouterResultSynthetic = RouterResultBase & RouterResultRequestHeaders & {
+  type: 'synthetic';
+  syntheticResponse: Response;
 };
 
 export type RouterResultError = RouterResultBase & {
@@ -122,7 +122,7 @@ export type RouterResultError = RouterResultBase & {
   type: 'error';
 };
 
-export type RouterResult = RouterResultFilesystem | RouterResultProxy | RouterResultRedirect | RouterResultMiddleware | RouterResultError;
+export type RouterResult = RouterResultFilesystem | RouterResultProxy | RouterResultRedirect | RouterResultSynthetic | RouterResultError;
 
 export type MiddlewareHandler =
   (middlewarePath: string, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<MiddlewareResponse>;

@@ -16,6 +16,7 @@ export type BackendInfo = {
 
 export type RequestContext = {
   client: ClientInfo,
+  request: Request,
   requestId: string,
   initUrl: URL,
 

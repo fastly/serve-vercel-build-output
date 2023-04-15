@@ -11,8 +11,7 @@ import {
   RouterResult,
 } from "../types/routing.js";
 import { applyRouteResults, matchRoute } from "../utils/routing.js";
-import ILogger from "../logging/ILogger.js";
-import ILoggerProvider from "../logging/ILoggerProvider.js";
+import { getLogger, ILogger } from "../logging/index.js";
 import { PromiseOrValue } from "../utils/misc.js";
 
 export type InitHeadersHandler = () => PromiseOrValue<HttpHeaders>;
@@ -34,10 +33,9 @@ export default class RouteMatcher {
 
   constructor(
     routesCollection: RoutesCollection,
-    loggerProvider?: ILoggerProvider
   ) {
     this._routesCollection = routesCollection;
-    this._logger = loggerProvider?.getLogger(this.constructor.name);
+    this._logger = getLogger(this.constructor.name);
   }
 
   async checkFilesystem(pathname: string): Promise<boolean> {
@@ -153,8 +151,8 @@ export default class RouteMatcher {
           status,
           headers,
           requestHeaders: routeMatcherContext.headers,
-          middlewareResponse: phaseResult.middlewareResponse,
-          type: 'middleware',
+          syntheticResponse: phaseResult.middlewareResponse,
+          type: 'synthetic',
         };
       }
 
