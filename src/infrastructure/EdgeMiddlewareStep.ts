@@ -8,7 +8,7 @@ import {
   routeMatcherContextToRequest
 } from "../routing/RouteMatcherContext.js";
 import RouteMatcher from "../routing/RouteMatcher.js";
-import { Backends, BackendsDefs, EdgeFunction, EdgeFunctionContext, RequestContext } from "../server/types.js";
+import { Backends, BackendsDefs, RequestContext } from "../server/types.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import { processMiddlewareResponse } from "../utils/middleware.js";
@@ -19,6 +19,7 @@ import { getBackendInfo } from "../utils/backends.js";
 import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import EdgeNetworkCacheStep from "./EdgeNetworkCacheStep.js";
+import { execLayerProxy } from "../utils/execLayerProxy.js";
 
 export type EdgeMiddlewareStepInit = {
   config: Config,
@@ -76,7 +77,7 @@ export default class EdgeMiddlewareStep {
     requestContext: RequestContext,
   ) {
 
-    const { client, request, requestId, initUrl, edgeFunctionContext } = requestContext;
+    const { client, request, requestId, initUrl } = requestContext;
 
     const routeMatcherContext = createRouteMatcherContext(request);
 
@@ -98,7 +99,7 @@ export default class EdgeMiddlewareStep {
     routeMatcher.onCheckFilesystem =
       pathname => this.onCheckFilesystem(pathname);
     routeMatcher.onMiddleware = (middlewarePath, routeMatcherContext) =>
-      this.onMiddleware(middlewarePath, initUrl, routeMatcherContext, edgeFunctionContext);
+      this.onMiddleware(middlewarePath, initUrl, routeMatcherContext);
     const routeMatchResult = await routeMatcher.doRouter(routeMatcherContext);
     this._logger?.info('returned from router');
 
@@ -369,7 +370,6 @@ export default class EdgeMiddlewareStep {
     middlewarePath: string,
     initUrl: URL,
     routeMatcherContext: RouteMatcherContext,
-    edgeFunctionContext: EdgeFunctionContext,
   ) {
     const asset = this._assetsCollection.getAsset(middlewarePath);
     if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
@@ -385,8 +385,7 @@ export default class EdgeMiddlewareStep {
 
     const request = routeMatcherContextToRequest(routeMatcherContext);
 
-    const func = (await asset.loadModule()).default as EdgeFunction;
-    const response = await func(request, edgeFunctionContext);
+    const response = await execLayerProxy(request, middlewarePath);
 
     const result = processMiddlewareResponse(response, initUrl);
     this._logger?.debug({initUrl, result});

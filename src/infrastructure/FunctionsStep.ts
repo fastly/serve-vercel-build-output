@@ -2,7 +2,8 @@ import { getLogger, ILogger } from "../logging/index.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
 import { RouteMatcherContext, routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
-import { EdgeFunction, RequestContext } from "../server/types.js";
+import { RequestContext } from "../server/types.js";
+import { execLayerProxy } from "../utils/execLayerProxy.js";
 
 export type FunctionsStepInit = {
   assetsCollection: AssetsCollection,
@@ -25,8 +26,6 @@ export default class FunctionsStep {
 
     const request = routeMatcherContextToRequest(routeMatcherContext);
 
-    const { edgeFunctionContext } = requestContext;
-
     const asset = this._assetsCollection.getAsset(pathname);
     if (!(asset instanceof FunctionAsset)) {
       if (asset == null) {
@@ -34,8 +33,7 @@ export default class FunctionsStep {
       }
       throw new Error('Unknown asset type ' + pathname);
     }
-    const func = (await asset.loadModule()).default as EdgeFunction;
-    return func(request, edgeFunctionContext);
 
+    return await execLayerProxy(request);
   }
 }

@@ -4,9 +4,11 @@ import { Config } from "../types/config.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
 import { BackendsDefs, EdgeFunctionContext, RequestContext } from "./types.js";
-import { generateRequestId } from "../utils/request.js";
+import { cloneRequestWithNewUrl, generateRequestId } from "../utils/request.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
+import VercelExecLayer from "./layers/VercelExecLayer.js";
+import { isExecLayerRequest } from "../utils/execLayerProxy.js";
 
 export type ServerInit = {
   modulePath?: string,
@@ -17,8 +19,18 @@ export type ServerInit = {
 };
 
 const REGEX_LOCALHOST_HOSTNAME = /(?!^https?:\/\/)(127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}|::1|localhost)/;
-export function parseURL(url: string | URL, base?: string | URL) {
-  return new URL(String(url).replace(REGEX_LOCALHOST_HOSTNAME, "localhost"), base && String(base).replace(REGEX_LOCALHOST_HOSTNAME, "localhost"));
+function normalizeRequest(request: Request) {
+  const urlAsString = String(request.url);
+
+  // normalize 127.x.x.x and ::1 URLs to localhost
+  const urlLocalhostNormalized = urlAsString.replace(REGEX_LOCALHOST_HOSTNAME, 'localhost');
+
+  // If this is identical, then return it directly
+  if (urlAsString === urlLocalhostNormalized) {
+    return request;
+  }
+
+  return cloneRequestWithNewUrl(request, urlLocalhostNormalized);
 }
 
 export default class VercelBuildOutputServer {
@@ -28,6 +40,8 @@ export default class VercelBuildOutputServer {
   _assetsCollection: AssetsCollection;
 
   _edgeMiddlewareStep: EdgeMiddlewareStep;
+
+  _vercelExecLayer: VercelExecLayer;
 
   _logger?: ILogger;
 
@@ -52,6 +66,10 @@ export default class VercelBuildOutputServer {
       config,
       backends,
       templateEngine,
+      assetsCollection,
+    });
+
+    this._vercelExecLayer = new VercelExecLayer({
       assetsCollection,
     });
 
@@ -80,18 +98,23 @@ export default class VercelBuildOutputServer {
   ): Promise<Response> {
 
     // C@E uses 'host' header to build this URL.
-    const initUrl = parseURL(request.url);
+    const normalizedRequest = normalizeRequest(request);
+    const initUrl = new URL(normalizedRequest.url);
 
     // Fastly: build requestId from POP ID
     const requestId = generateRequestId(env('FASTLY_POP') || 'local');
 
     const requestContext: RequestContext = {
       client,
-      request,
+      request: normalizedRequest,
       requestId,
       initUrl,
       edgeFunctionContext,
     };
+
+    if (isExecLayerRequest(request)) {
+      return await this._vercelExecLayer.execFunction(requestContext);
+    }
 
     return await this._edgeMiddlewareStep.doStep(requestContext);
   }
