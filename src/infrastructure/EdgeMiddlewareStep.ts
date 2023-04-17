@@ -77,7 +77,7 @@ export default class EdgeMiddlewareStep {
     requestContext: RequestContext,
   ) {
 
-    const { client, request, requestId, initUrl } = requestContext;
+    const { client, request, requestId } = requestContext;
 
     const routeMatcherContext = createRouteMatcherContext(request);
 
@@ -99,7 +99,7 @@ export default class EdgeMiddlewareStep {
     routeMatcher.onCheckFilesystem =
       pathname => this.onCheckFilesystem(pathname);
     routeMatcher.onMiddleware = (middlewarePath, routeMatcherContext) =>
-      this.onMiddleware(middlewarePath, initUrl, routeMatcherContext);
+      this.onMiddleware(middlewarePath, request, routeMatcherContext);
     const routeMatchResult = await routeMatcher.doRouter(routeMatcherContext);
     this._logger?.info('returned from router');
 
@@ -368,7 +368,7 @@ export default class EdgeMiddlewareStep {
 
   async onMiddleware(
     middlewarePath: string,
-    initUrl: URL,
+    request: Request,
     routeMatcherContext: RouteMatcherContext,
   ) {
     const asset = this._assetsCollection.getAsset(middlewarePath);
@@ -383,12 +383,12 @@ export default class EdgeMiddlewareStep {
       };
     }
 
-    const request = routeMatcherContextToRequest(routeMatcherContext);
+    const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
 
-    const response = await execLayerProxy(request, middlewarePath);
+    const middlewareResponse = await execLayerProxy(middlewareRequest, middlewarePath);
 
-    const result = processMiddlewareResponse(response, initUrl);
-    this._logger?.debug({initUrl, result});
+    const result = processMiddlewareResponse(middlewareResponse, request.url);
+    this._logger?.debug({url: request.url, result});
     return result;
   }
 }

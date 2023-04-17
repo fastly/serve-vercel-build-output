@@ -99,7 +99,6 @@ export default class VercelBuildOutputServer {
 
     // C@E uses 'host' header to build this URL.
     const normalizedRequest = normalizeRequest(request);
-    const initUrl = new URL(normalizedRequest.url);
 
     // Fastly: build requestId from POP ID
     const requestId = generateRequestId(env('FASTLY_POP') || 'local');
@@ -108,7 +107,6 @@ export default class VercelBuildOutputServer {
       client,
       request: normalizedRequest,
       requestId,
-      initUrl,
       edgeFunctionContext,
     };
 

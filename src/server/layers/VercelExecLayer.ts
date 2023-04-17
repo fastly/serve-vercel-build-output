@@ -23,12 +23,9 @@ export default class VercelExecLayer {
   async execFunction(
     requestContext: RequestContext,
   ) {
-    const { request: execLayerRequest, edgeFunctionContext, initUrl } = requestContext;
+    const { request: execLayerRequest, edgeFunctionContext } = requestContext;
 
-    const request = fromExecLayerRequest(execLayerRequest);
-
-    const pathname = fromExecLayerPath(initUrl.pathname);
-
+    const pathname = fromExecLayerPath(new URL(execLayerRequest.url).pathname);
     const asset = this._assetsCollection.getAsset(pathname);
     if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
       // not found (or wasn't a edge function)
@@ -39,6 +36,13 @@ export default class VercelExecLayer {
     }
 
     const func = (await asset.loadModule()).default as EdgeFunction;
+
+    // Exec layer request contains the function path encoded with /_xl/ path, as well as the original
+    // request pathname (if different from function path) encoded in the x-xl-orig-pathname header.
+    // This translates those back into a Request object that will contain their original values,
+    // before we pass it to the edge function.
+
+    const request = fromExecLayerRequest(execLayerRequest);
     return await func(request, edgeFunctionContext);
   }
 }
