@@ -10,6 +10,10 @@ import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
 import { isExecLayerRequest } from "../utils/execLayerProxy.js";
 
+export type ServerConfig = {
+  backends?: BackendsDefs,
+};
+
 export type ServerInit = {
   modulePath?: string,
   contentAssets: ContentAssets,
