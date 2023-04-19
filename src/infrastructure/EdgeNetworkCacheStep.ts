@@ -8,7 +8,6 @@ import { VercelBuildOutputServer } from "../server/index.js";
 
 export type EdgeNetworkCacheStepInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,
-  execLayerFunctionBackend?: string,
 };
 
 export default class EdgeNetworkCacheStep {
@@ -20,12 +19,10 @@ export default class EdgeNetworkCacheStep {
   constructor(init: EdgeNetworkCacheStepInit) {
     const {
       vercelBuildOutputServer,
-      execLayerFunctionBackend,
     } = init;
     this._vercelBuildOutputServer = vercelBuildOutputServer;
     this._functionsStep = new FunctionsStep({
       vercelBuildOutputServer,
-      execLayerFunctionBackend,
     });
 
     this._logger = getLogger(this.constructor.name);

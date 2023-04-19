@@ -7,21 +7,17 @@ import { VercelBuildOutputServer } from "../server/index.js";
 
 export type FunctionsStepInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,
-  execLayerFunctionBackend?: string,
 };
 
 export default class FunctionsStep {
   private _vercelBuildOutputServer: VercelBuildOutputServer;
-  private _execLayerFunctionBackend: string | undefined;
   private _logger: ILogger;
 
   constructor(init: FunctionsStepInit) {
     const {
       vercelBuildOutputServer,
-      execLayerFunctionBackend,
     } = init;
     this._vercelBuildOutputServer = vercelBuildOutputServer;
-    this._execLayerFunctionBackend = execLayerFunctionBackend;
     this._logger = getLogger(this.constructor.name);
   }
 

@@ -8,7 +8,7 @@ import {
   routeMatcherContextToRequest
 } from "../routing/RouteMatcherContext.js";
 import RouteMatcher from "../routing/RouteMatcher.js";
-import { Backends, BackendsDefs, RequestContext } from "../server/types.js";
+import { RequestContext } from "../server/types.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import { processMiddlewareResponse } from "../utils/middleware.js";
@@ -25,28 +25,20 @@ import { VercelBuildOutputServer } from "../server/index.js";
 export type EdgeMiddlewareStepInit = {
   config: Config,
   vercelBuildOutputServer: VercelBuildOutputServer,
-  backends?: BackendsDefs,
-  execLayerMiddlewareBackend?: string,
-  execLayerFunctionBackend?: string,
 };
 
 export default class EdgeMiddlewareStep {
   private _vercelBuildOutputServer: VercelBuildOutputServer;
   private _routesCollection: RoutesCollection;
-  private _backends: Backends | 'dynamic';
   private _edgeNetworkCacheStep: EdgeNetworkCacheStep;
-  private _execLayerMiddlewareBackend: string | undefined;
   private _logger?: ILogger;
 
   constructor(
     init: EdgeMiddlewareStepInit,
   ) {
-    const config = init.config;
-
     const {
+      config,
       vercelBuildOutputServer,
-      execLayerMiddlewareBackend,
-      execLayerFunctionBackend,
     } = init;
 
     this._vercelBuildOutputServer = vercelBuildOutputServer;
@@ -55,25 +47,8 @@ export default class EdgeMiddlewareStep {
     this._routesCollection = new RoutesCollection(routes);
     RouteSrcMatcher.init(this._routesCollection.routes);
 
-    this._backends = {};
-    if (init.backends === 'dynamic') {
-      this._backends = 'dynamic';
-    } else if (init.backends != null) {
-      for (const [key, def] of Object.entries(init.backends)) {
-        let backend = def;
-        if (typeof backend === 'string') {
-          backend = {
-            url: backend
-          };
-        }
-        this._backends[key] = backend;
-      }
-    }
-
-    this._execLayerMiddlewareBackend = execLayerMiddlewareBackend;
     this._edgeNetworkCacheStep = new EdgeNetworkCacheStep({
       vercelBuildOutputServer,
-      execLayerFunctionBackend,
     });
 
     this._logger = getLogger(this.constructor.name);
@@ -213,8 +188,8 @@ export default class EdgeMiddlewareStep {
       headers['x-forwarded-' + header] = arr.join(',');
     });
 
-    if (this._backends !== 'dynamic') {
-      const backendInfo = getBackendInfo(this._backends, destUrl);
+    if (this._vercelBuildOutputServer.serverConfig.backends !== 'dynamic') {
+      const backendInfo = getBackendInfo(this._vercelBuildOutputServer.serverConfig.backends, destUrl);
 
       if (backendInfo == null) {
         this._logger?.warn('Proxying to ' + destUrl + ' may fail as it does not match a defined backend.');

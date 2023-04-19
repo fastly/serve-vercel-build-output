@@ -3,7 +3,7 @@ import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import { Config } from "../types/config.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
-import { BackendsDefs, EdgeFunctionContext, RequestContext } from "./types.js";
+import { Backends, BackendsDefs, EdgeFunctionContext, RequestContext } from "./types.js";
 import { generateRequestId } from "../utils/request.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
@@ -11,7 +11,15 @@ import VercelExecLayer from "./layers/VercelExecLayer.js";
 import { isExecLayerRequest } from "../utils/execLayer.js";
 
 export type ServerConfig = {
+  backends: Backends | 'dynamic',
+  execLayerMiddlewareBackend: string | undefined,
+  execLayerFunctionBackend: string | undefined,
+};
+
+export type ServerConfigInit = {
   backends?: BackendsDefs,
+  execLayerMiddlewareBackend?: string,
+  execLayerFunctionBackend?: string,
 };
 
 export type ServerInit = {
@@ -19,20 +27,21 @@ export type ServerInit = {
   contentAssets: ContentAssets,
   moduleAssets: ModuleAssets,
   config: Config,
-  backends?: BackendsDefs,
+  serverConfig?: ServerConfigInit,
 };
 
 export default class VercelBuildOutputServer {
   assetsCollection: AssetsCollection;
   templateEngine: VercelBuildOutputTemplateEngine;
   vercelExecLayer: VercelExecLayer;
+  serverConfig: ServerConfig;
   _edgeMiddlewareStep: EdgeMiddlewareStep;
   _logger?: ILogger;
 
   constructor(
     init: ServerInit,
   ) {
-    const config = init.config;
+    const { config, serverConfig } = init;
 
     this.templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
 
@@ -43,11 +52,34 @@ export default class VercelBuildOutputServer {
     );
     this.assetsCollection = assetsCollection;
 
-    const backends = init.backends;
+    let backends: Backends | 'dynamic';
+    if (serverConfig?.backends === 'dynamic') {
+      backends = 'dynamic';
+    } else {
+      backends = {};
+      if (serverConfig?.backends != null) {
+        for (const [key, def] of Object.entries(serverConfig?.backends)) {
+          let backend = def;
+          if (typeof backend === 'string') {
+            backend = {
+              url: backend
+            };
+          }
+          backends[key] = backend;
+        }
+      }
+    }
+
+    this.serverConfig = {
+      backends,
+      execLayerMiddlewareBackend: serverConfig?.execLayerMiddlewareBackend,
+      execLayerFunctionBackend: serverConfig?.execLayerFunctionBackend,
+    };
+
+
     this._edgeMiddlewareStep = new EdgeMiddlewareStep({
       config,
       vercelBuildOutputServer: this,
-      backends,
     });
 
     this.vercelExecLayer = new VercelExecLayer({

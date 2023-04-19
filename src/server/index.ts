@@ -2,6 +2,7 @@ import { BackendDef, Backends, BackendsDefs } from "./types.js";
 import VercelBuildOutputServer, {
   ServerConfig,
   ServerInit,
+  ServerConfigInit,
 } from "./VercelBuildOutputServer.js";
 
 export {
@@ -10,5 +11,6 @@ export {
   Backends,
   ServerConfig,
   ServerInit,
+  ServerConfigInit,
   VercelBuildOutputServer,
 };
