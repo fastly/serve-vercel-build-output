@@ -20,7 +20,7 @@ import { getBackendInfo } from "../utils/backends.js";
 import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import EdgeNetworkCacheStep from "./EdgeNetworkCacheStep.js";
-import { execLayerProxy } from "../utils/execLayerProxy.js";
+import { fetchThroughExecLayer } from "../utils/execLayer.js";
 import { normalizeUrlLocalhost } from "../utils/request.js";
 
 export type EdgeMiddlewareStepInit = {
@@ -389,10 +389,11 @@ export default class EdgeMiddlewareStep {
     const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
     middlewareRequest.setCacheOverride(new CacheOverride("pass"));
 
-    const middlewareResponse = await execLayerProxy(middlewareRequest, client, middlewarePath);
+    const middlewareResponse = await fetchThroughExecLayer(middlewareRequest, client, middlewarePath);
 
-    const result = processMiddlewareResponse(middlewareResponse, request.url);
-    this._logger?.debug({url: request.url, result});
+    const baseUrl = normalizeUrlLocalhost(request.url);
+    const result = processMiddlewareResponse(middlewareResponse, baseUrl);
+    this._logger?.debug({baseUrl, result});
     return result;
   }
 }

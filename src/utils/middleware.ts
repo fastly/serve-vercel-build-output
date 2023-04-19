@@ -1,7 +1,8 @@
 import { HttpHeaders, MiddlewareResponse } from "../types/routing.js";
 import { relativizeURL } from "./routing.js";
+import { normalizeUrlLocalhost } from "./request.js";
 
-export function processMiddlewareResponse(response: Response, baseUrl: string | URL): MiddlewareResponse {
+export function processMiddlewareResponse(response: Response, baseUrl: string): MiddlewareResponse {
 
   let returnResponse = true;
   let isContinue = false;
@@ -33,7 +34,7 @@ export function processMiddlewareResponse(response: Response, baseUrl: string | 
   if (rewriteHeaderValue != null) {
     returnResponse = false;
     response.headers.delete('x-middleware-rewrite');
-    dest = relativizeURL(rewriteHeaderValue, baseUrl);
+    dest = relativizeURL(normalizeUrlLocalhost(rewriteHeaderValue), baseUrl);
   }
 
   // request headers are set in NextResponse.request.headers

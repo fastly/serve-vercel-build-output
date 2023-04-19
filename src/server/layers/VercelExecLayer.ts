@@ -2,7 +2,7 @@ import AssetsCollection from "../../assets/AssetsCollection.js";
 import FunctionAsset from "../../assets/FunctionAsset.js";
 import { EdgeFunction, RequestContext } from "../types.js";
 import { getLogger, ILogger } from "../../logging/index.js";
-import { fromExecLayerRequest } from "../../utils/execLayerProxy.js";
+import { execLayerFunctionPathnameFromRequest } from "../../utils/execLayer.js";
 
 export type VercelExecLayerInit = {
   assetsCollection: AssetsCollection,
@@ -23,9 +23,8 @@ export default class VercelExecLayer {
   async execFunction(
     requestContext: RequestContext,
   ) {
-    const { request: execLayerRequest, edgeFunctionContext } = requestContext;
-
-    const { request, functionPathname } = fromExecLayerRequest(execLayerRequest);
+    const { request, edgeFunctionContext } = requestContext;
+    const functionPathname = execLayerFunctionPathnameFromRequest(request);
 
     const asset = this._assetsCollection.getAsset(functionPathname);
     if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {

@@ -3,7 +3,7 @@ import AssetsCollection from "../assets/AssetsCollection.js";
 import { RouteMatcherContext, routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import { RequestContext } from "../server/types.js";
-import { execLayerProxy } from "../utils/execLayerProxy.js";
+import { fetchThroughExecLayer } from "../utils/execLayer.js";
 
 export type FunctionsStepInit = {
   assetsCollection: AssetsCollection,
@@ -35,6 +35,6 @@ export default class FunctionsStep {
       throw new Error('Unknown asset type ' + pathname);
     }
 
-    return await execLayerProxy(request, client);
+    return await fetchThroughExecLayer(request, client);
   }
 }

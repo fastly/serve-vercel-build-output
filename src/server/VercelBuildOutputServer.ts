@@ -9,7 +9,7 @@ import { generateRequestId } from "../utils/request.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
-import { isExecLayerRequest } from "../utils/execLayerProxy.js";
+import { isExecLayerRequest } from "../utils/execLayer.js";
 
 export type ServerConfig = {
   backends?: BackendsDefs,
