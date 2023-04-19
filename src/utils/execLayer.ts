@@ -13,7 +13,7 @@ export async function fetchThroughExecLayer(request: Request, client: ClientInfo
 
   const clientAddress = client.address ?? '';
   if (clientAddress) {
-    request.headers.set('x-forwarded-for', clientAddress);
+    request.headers.set('x-real-ip', clientAddress);
   }
 
   return await fetch(request, {

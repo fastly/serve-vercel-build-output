@@ -38,10 +38,9 @@ export default class VercelExecLayer {
 
     const func = (await asset.loadModule()).default as EdgeFunction;
 
-    const clientAddress = request.headers.get('x-forwarded-for');
+    const clientAddress = request.headers.get('x-real-ip');
     if (clientAddress) {
       const geo = getGeolocationForIpAddress(clientAddress);
-      request.headers.set('x-real-ip', clientAddress);
       request.headers.set('x-vercel-ip-city', geo.city ?? '');
       request.headers.set('x-vercel-ip-country', geo.country_code ?? '');
       request.headers.set('x-vercel-ip-country-region', geo.country_code3 ?? '');
