@@ -1,3 +1,4 @@
+import { CacheOverride } from "fastly:cache-override";
 import AssetsCollection from "../assets/AssetsCollection.js";
 import RoutesCollection from "../routing/RoutesCollection.js";
 import { Config } from "../types/config.js";
@@ -20,6 +21,7 @@ import { generateErrorMessage, generateHttpStatusDescription } from "../utils/er
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import EdgeNetworkCacheStep from "./EdgeNetworkCacheStep.js";
 import { execLayerProxy } from "../utils/execLayerProxy.js";
+import { normalizeUrlLocalhost } from "../utils/request.js";
 
 export type EdgeMiddlewareStepInit = {
   config: Config,
@@ -99,7 +101,7 @@ export default class EdgeMiddlewareStep {
     routeMatcher.onCheckFilesystem =
       pathname => this.onCheckFilesystem(pathname);
     routeMatcher.onMiddleware = (middlewarePath, routeMatcherContext) =>
-      this.onMiddleware(middlewarePath, request, routeMatcherContext);
+      this.onMiddleware(middlewarePath, request, client, routeMatcherContext);
     const routeMatchResult = await routeMatcher.doRouter(routeMatcherContext);
     this._logger?.info('returned from router');
 
@@ -164,7 +166,7 @@ export default class EdgeMiddlewareStep {
   }
 
   private serveProxyResponse(
-    pathname: string,
+    destUrl: string,
     routeMatcherContext: RouteMatcherContext,
     request: Request,
     client: ClientInfo,
@@ -180,10 +182,10 @@ export default class EdgeMiddlewareStep {
     const headers = Object.assign({}, routeMatcherContext.headers);
 
     // rewrite host
-    headers['host'] = new URL(pathname).host;
+    headers['host'] = new URL(normalizeUrlLocalhost(destUrl)).host;
 
     // XFF
-    const url = new URL(request.url);
+    const url = new URL(normalizeUrlLocalhost(request.url));
     const port = url.port || '443';       // C@E can only be on 443, except when running locally
     const proto = 'https';                // C@E can only be accessed via HTTPS
 
@@ -208,10 +210,10 @@ export default class EdgeMiddlewareStep {
     });
 
     if (this._backends !== 'dynamic') {
-      const backendInfo = getBackendInfo(this._backends, pathname);
+      const backendInfo = getBackendInfo(this._backends, destUrl);
 
       if (backendInfo == null) {
-        this._logger?.warn('Proxying to ' + pathname + ' may fail as it does not match a defined backend.');
+        this._logger?.warn('Proxying to ' + destUrl + ' may fail as it does not match a defined backend.');
       } else {
         requestInit.backend = backendInfo.name;
 
@@ -223,13 +225,13 @@ export default class EdgeMiddlewareStep {
 
     requestInit.headers = new Headers(headers);
 
-    this._logger?.debug('Making proxy request to', pathname);
+    this._logger?.debug('Making proxy request to', destUrl);
     this._logger?.debug({
       backend: requestInit.backend,
       headers,
     });
 
-    return fetch(pathname, requestInit);
+    return fetch(destUrl, requestInit);
   }
 
   private buildResponseHeaders(
@@ -369,6 +371,7 @@ export default class EdgeMiddlewareStep {
   async onMiddleware(
     middlewarePath: string,
     request: Request,
+    client: ClientInfo,
     routeMatcherContext: RouteMatcherContext,
   ) {
     const asset = this._assetsCollection.getAsset(middlewarePath);
@@ -384,8 +387,9 @@ export default class EdgeMiddlewareStep {
     }
 
     const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
+    middlewareRequest.setCacheOverride(new CacheOverride("pass"));
 
-    const middlewareResponse = await execLayerProxy(middlewareRequest, middlewarePath);
+    const middlewareResponse = await execLayerProxy(middlewareRequest, client, middlewarePath);
 
     const result = processMiddlewareResponse(middlewareResponse, request.url);
     this._logger?.debug({url: request.url, result});

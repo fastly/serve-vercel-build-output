@@ -21,28 +21,7 @@ export function generateRequestId(podId: string, isInvoke = false): string {
   ].join('-')}`;
 }
 
-export type CloneRequestInit = {
-  backend?: string,
-};
-
-export function cloneRequestWithNewUrl(request: Request, url: string, init?: CloneRequestInit) {
-
-  const newURL = new URL(url, request.url);
-
-  const headers = new Headers(request.headers);
-
-  const requestInit: RequestInit = {
-    method: request.method,
-    headers,
-  };
-
-  if (init?.backend != null) {
-    requestInit.backend = init.backend;
-  }
-
-  if (request.method !== 'HEAD' && request.method !== 'GET') {
-    requestInit.body = request.clone().body;
-  }
-
-  return new Request(newURL, requestInit)
+const REGEX_LOCALHOST_HOSTNAME = /(?!^https?:\/\/)(127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}|::1|localhost)/;
+export function normalizeUrlLocalhost(url: string) {
+  return url.replace(REGEX_LOCALHOST_HOSTNAME, 'localhost');
 }

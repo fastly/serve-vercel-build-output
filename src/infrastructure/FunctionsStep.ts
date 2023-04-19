@@ -25,6 +25,7 @@ export default class FunctionsStep {
   ) {
 
     const request = routeMatcherContextToRequest(routeMatcherContext);
+    const client = requestContext.client;
 
     const asset = this._assetsCollection.getAsset(pathname);
     if (!(asset instanceof FunctionAsset)) {
@@ -34,6 +35,6 @@ export default class FunctionsStep {
       throw new Error('Unknown asset type ' + pathname);
     }
 
-    return await execLayerProxy(request);
+    return await execLayerProxy(request, client);
   }
 }

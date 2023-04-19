@@ -1,4 +1,3 @@
-import cookie from 'cookie';
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
 import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher.js";
@@ -9,7 +8,7 @@ import {
   RouteMatchResult,
   ValuesAndReplacements
 } from "../types/routing.js";
-import { formatQueryString, parseQueryString } from "./query.js";
+import { normalizeUrlLocalhost } from "./request.js";
 
 type HasFieldEntry = NonNullable<RouteWithSrc['has']>[number];
 
@@ -328,11 +327,11 @@ export function flattenValuesAndReplacementsObject(
 /**
  * Given a URL as a string and a base URL it will make the URL relative
  * if the parsed protocol and host is the same as the one in the base
- * URL. Otherwise it returns the same URL string.
+ * URL. Otherwise, it returns the same URL string.
  */
 export function relativizeURL(url: string | string, base: string | URL) {
-  const baseURL = typeof base === 'string' ? new URL(base) : base
-  const relative = new URL(url, base)
+  const baseURL = typeof base === 'string' ? new URL(normalizeUrlLocalhost(base)) : base
+  const relative = new URL(normalizeUrlLocalhost(url), base)
   const origin = `${baseURL.protocol}//${baseURL.host}`
   return `${relative.protocol}//${relative.host}` === origin
     ? relative.toString().replace(origin, '')

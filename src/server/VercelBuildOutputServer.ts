@@ -1,10 +1,11 @@
 import { env } from "fastly:env";
+import { getGeolocationForIpAddress } from "fastly:geolocation";
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import { Config } from "../types/config.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
 import { BackendsDefs, EdgeFunctionContext, RequestContext } from "./types.js";
-import { cloneRequestWithNewUrl, generateRequestId } from "../utils/request.js";
+import { generateRequestId } from "../utils/request.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
@@ -21,21 +22,6 @@ export type ServerInit = {
   config: Config,
   backends?: BackendsDefs,
 };
-
-const REGEX_LOCALHOST_HOSTNAME = /(?!^https?:\/\/)(127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}|::1|localhost)/;
-function normalizeRequest(request: Request) {
-  const urlAsString = String(request.url);
-
-  // normalize 127.x.x.x and ::1 URLs to localhost
-  const urlLocalhostNormalized = urlAsString.replace(REGEX_LOCALHOST_HOSTNAME, 'localhost');
-
-  // If this is identical, then return it directly
-  if (urlAsString === urlLocalhostNormalized) {
-    return request;
-  }
-
-  return cloneRequestWithNewUrl(request, urlLocalhostNormalized);
-}
 
 export default class VercelBuildOutputServer {
 
@@ -100,21 +86,27 @@ export default class VercelBuildOutputServer {
     client: ClientInfo,
     edgeFunctionContext: EdgeFunctionContext,
   ): Promise<Response> {
-
-    // C@E uses 'host' header to build this URL.
-    const normalizedRequest = normalizeRequest(request);
-
     // Fastly: build requestId from POP ID
     const requestId = generateRequestId(env('FASTLY_POP') || 'local');
 
     const requestContext: RequestContext = {
       client,
-      request: normalizedRequest,
+      request,
       requestId,
       edgeFunctionContext,
     };
 
     if (isExecLayerRequest(request)) {
+      const clientAddress = request.headers.get('x-forwarded-for');
+      if (clientAddress) {
+        const geo = getGeolocationForIpAddress(clientAddress);
+        request.headers.set('x-real-ip', clientAddress);
+        request.headers.set('x-vercel-ip-city', geo.city ?? '');
+        request.headers.set('x-vercel-ip-country', geo.country_code ?? '');
+        request.headers.set('x-vercel-ip-country-region', geo.country_code3 ?? '');
+        request.headers.set('x-vercel-ip-latitude', String(geo.latitude));
+        request.headers.set('x-vercel-ip-longitude', String(geo.longitude));
+      }
       return await this._vercelExecLayer.execFunction(requestContext);
     }
 

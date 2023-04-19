@@ -3,6 +3,7 @@ import { formatQueryString, headersToObject, parseQueryString } from "../utils/q
 import { HttpCookies, HttpHeaders, Query } from "../types/routing.js";
 import { arrayToReadableStream, readableStreamToArray } from "../utils/stream.js";
 import { isURL } from "../utils/routing.js";
+import { normalizeUrlLocalhost } from "../utils/request.js";
 
 export interface RouteMatcherContext {
 
@@ -89,7 +90,7 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
     this._method = request.method;
     this._headers = headersToObject(request.headers);
 
-    const url = new URL(request.url);
+    const url = new URL(normalizeUrlLocalhost(request.url));
     this._pathname = url.pathname;
     this._query = parseQueryString(url.search);
     this._host = url.host;
