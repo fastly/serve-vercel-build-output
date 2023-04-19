@@ -2,25 +2,30 @@ import { RequestContext } from "../server/types.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import StaticAsset from "../assets/StaticAsset.js";
 import { getLogger, ILogger } from "../logging/index.js";
-import AssetsCollection from "../assets/AssetsCollection.js";
 import FunctionsStep from "./FunctionsStep.js";
-import {RouteMatcherContext} from "../routing/RouteMatcherContext.js";
+import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
+import { VercelBuildOutputServer } from "../server/index.js";
 
 export type EdgeNetworkCacheStepInit = {
-  assetsCollection: AssetsCollection,
+  vercelBuildOutputServer: VercelBuildOutputServer,
+  execLayerFunctionBackend?: string,
 };
 
 export default class EdgeNetworkCacheStep {
-  private _assetsCollection: AssetsCollection;
+  private _vercelBuildOutputServer: VercelBuildOutputServer;
   private _functionsStep: FunctionsStep;
 
   private _logger: ILogger;
 
   constructor(init: EdgeNetworkCacheStepInit) {
-    const { assetsCollection } = init;
-    this._assetsCollection = assetsCollection;
+    const {
+      vercelBuildOutputServer,
+      execLayerFunctionBackend,
+    } = init;
+    this._vercelBuildOutputServer = vercelBuildOutputServer;
     this._functionsStep = new FunctionsStep({
-      assetsCollection,
+      vercelBuildOutputServer,
+      execLayerFunctionBackend,
     });
 
     this._logger = getLogger(this.constructor.name);
@@ -37,7 +42,7 @@ export default class EdgeNetworkCacheStep {
       pathname,
     });
 
-    const asset = this._assetsCollection.getAsset(pathname);
+    const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(pathname);
 
     if (asset instanceof StaticAsset) {
       const storeEntry = await asset.contentAsset.getStoreEntry();

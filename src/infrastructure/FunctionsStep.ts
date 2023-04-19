@@ -1,20 +1,27 @@
 import { getLogger, ILogger } from "../logging/index.js";
-import AssetsCollection from "../assets/AssetsCollection.js";
 import { RouteMatcherContext, routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import { RequestContext } from "../server/types.js";
 import { fetchThroughExecLayer } from "../utils/execLayer.js";
+import { VercelBuildOutputServer } from "../server/index.js";
 
 export type FunctionsStepInit = {
-  assetsCollection: AssetsCollection,
+  vercelBuildOutputServer: VercelBuildOutputServer,
+  execLayerFunctionBackend?: string,
 };
 
 export default class FunctionsStep {
-  private _assetsCollection: AssetsCollection;
+  private _vercelBuildOutputServer: VercelBuildOutputServer;
+  private _execLayerFunctionBackend: string | undefined;
   private _logger: ILogger;
 
   constructor(init: FunctionsStepInit) {
-    this._assetsCollection = init.assetsCollection;
+    const {
+      vercelBuildOutputServer,
+      execLayerFunctionBackend,
+    } = init;
+    this._vercelBuildOutputServer = vercelBuildOutputServer;
+    this._execLayerFunctionBackend = execLayerFunctionBackend;
     this._logger = getLogger(this.constructor.name);
   }
 
@@ -27,7 +34,7 @@ export default class FunctionsStep {
     const request = routeMatcherContextToRequest(routeMatcherContext);
     const client = requestContext.client;
 
-    const asset = this._assetsCollection.getAsset(pathname);
+    const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(pathname);
     if (!(asset instanceof FunctionAsset)) {
       if (asset == null) {
         throw new Error(`Unknown asset: ${pathname}`);

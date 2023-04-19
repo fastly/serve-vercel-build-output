@@ -1,3 +1,4 @@
+import { getGeolocationForIpAddress } from "fastly:geolocation";
 import AssetsCollection from "../../assets/AssetsCollection.js";
 import FunctionAsset from "../../assets/FunctionAsset.js";
 import { EdgeFunction, RequestContext } from "../types.js";
@@ -37,10 +38,16 @@ export default class VercelExecLayer {
 
     const func = (await asset.loadModule()).default as EdgeFunction;
 
-    // Exec layer request contains the function path encoded with /_xl/ path, as well as the original
-    // request pathname (if different from function path) encoded in the x-xl-orig-pathname header.
-    // This translates those back into a Request object that will contain their original values,
-    // before we pass it to the edge function.
+    const clientAddress = request.headers.get('x-forwarded-for');
+    if (clientAddress) {
+      const geo = getGeolocationForIpAddress(clientAddress);
+      request.headers.set('x-real-ip', clientAddress);
+      request.headers.set('x-vercel-ip-city', geo.city ?? '');
+      request.headers.set('x-vercel-ip-country', geo.country_code ?? '');
+      request.headers.set('x-vercel-ip-country-region', geo.country_code3 ?? '');
+      request.headers.set('x-vercel-ip-latitude', String(geo.latitude));
+      request.headers.set('x-vercel-ip-longitude', String(geo.longitude));
+    }
 
     return await func(request, edgeFunctionContext);
   }

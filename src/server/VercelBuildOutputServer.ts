@@ -1,5 +1,4 @@
 import { env } from "fastly:env";
-import { getGeolocationForIpAddress } from "fastly:geolocation";
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import { Config } from "../types/config.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
@@ -24,42 +23,34 @@ export type ServerInit = {
 };
 
 export default class VercelBuildOutputServer {
-
-  _templateEngine: VercelBuildOutputTemplateEngine;
-
-  _assetsCollection: AssetsCollection;
-
+  assetsCollection: AssetsCollection;
+  templateEngine: VercelBuildOutputTemplateEngine;
+  vercelExecLayer: VercelExecLayer;
   _edgeMiddlewareStep: EdgeMiddlewareStep;
-
-  _vercelExecLayer: VercelExecLayer;
-
   _logger?: ILogger;
-
 
   constructor(
     init: ServerInit,
   ) {
     const config = init.config;
 
-    const templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
-    this._templateEngine = templateEngine;
+    this.templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
 
     const assetsCollection = new AssetsCollection(
       init.contentAssets,
       init.moduleAssets,
       config.overrides,
     );
-    this._assetsCollection = assetsCollection;
+    this.assetsCollection = assetsCollection;
 
     const backends = init.backends;
     this._edgeMiddlewareStep = new EdgeMiddlewareStep({
       config,
+      vercelBuildOutputServer: this,
       backends,
-      templateEngine,
-      assetsCollection,
     });
 
-    this._vercelExecLayer = new VercelExecLayer({
+    this.vercelExecLayer = new VercelExecLayer({
       assetsCollection,
     });
 
@@ -97,17 +88,7 @@ export default class VercelBuildOutputServer {
     };
 
     if (isExecLayerRequest(request)) {
-      const clientAddress = request.headers.get('x-forwarded-for');
-      if (clientAddress) {
-        const geo = getGeolocationForIpAddress(clientAddress);
-        request.headers.set('x-real-ip', clientAddress);
-        request.headers.set('x-vercel-ip-city', geo.city ?? '');
-        request.headers.set('x-vercel-ip-country', geo.country_code ?? '');
-        request.headers.set('x-vercel-ip-country-region', geo.country_code3 ?? '');
-        request.headers.set('x-vercel-ip-latitude', String(geo.latitude));
-        request.headers.set('x-vercel-ip-longitude', String(geo.longitude));
-      }
-      return await this._vercelExecLayer.execFunction(requestContext);
+      return await this.vercelExecLayer.execFunction(requestContext);
     }
 
     return await this._edgeMiddlewareStep.doStep(requestContext);

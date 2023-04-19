@@ -1,5 +1,4 @@
 import { CacheOverride } from "fastly:cache-override";
-import AssetsCollection from "../assets/AssetsCollection.js";
 import RoutesCollection from "../routing/RoutesCollection.js";
 import { Config } from "../types/config.js";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher.js";
@@ -18,24 +17,25 @@ import { headersToObject } from "../utils/query.js";
 import { arrayToReadableStream } from "../utils/stream.js";
 import { getBackendInfo } from "../utils/backends.js";
 import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors.js";
-import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import EdgeNetworkCacheStep from "./EdgeNetworkCacheStep.js";
 import { fetchThroughExecLayer } from "../utils/execLayer.js";
 import { normalizeUrlLocalhost } from "../utils/request.js";
+import { VercelBuildOutputServer } from "../server/index.js";
 
 export type EdgeMiddlewareStepInit = {
   config: Config,
-  templateEngine: VercelBuildOutputTemplateEngine,
+  vercelBuildOutputServer: VercelBuildOutputServer,
   backends?: BackendsDefs,
-  assetsCollection: AssetsCollection,
+  execLayerMiddlewareBackend?: string,
+  execLayerFunctionBackend?: string,
 };
 
 export default class EdgeMiddlewareStep {
-  private _assetsCollection: AssetsCollection;
+  private _vercelBuildOutputServer: VercelBuildOutputServer;
   private _routesCollection: RoutesCollection;
   private _backends: Backends | 'dynamic';
-  private _templateEngine: VercelBuildOutputTemplateEngine;
   private _edgeNetworkCacheStep: EdgeNetworkCacheStep;
+  private _execLayerMiddlewareBackend: string | undefined;
   private _logger?: ILogger;
 
   constructor(
@@ -43,9 +43,13 @@ export default class EdgeMiddlewareStep {
   ) {
     const config = init.config;
 
-    const { assetsCollection } = init;
+    const {
+      vercelBuildOutputServer,
+      execLayerMiddlewareBackend,
+      execLayerFunctionBackend,
+    } = init;
 
-    this._assetsCollection = assetsCollection;
+    this._vercelBuildOutputServer = vercelBuildOutputServer;
 
     const routes = config.routes ?? [];
     this._routesCollection = new RoutesCollection(routes);
@@ -66,10 +70,10 @@ export default class EdgeMiddlewareStep {
       }
     }
 
-    this._templateEngine = init.templateEngine;
-
+    this._execLayerMiddlewareBackend = execLayerMiddlewareBackend;
     this._edgeNetworkCacheStep = new EdgeNetworkCacheStep({
-      assetsCollection,
+      vercelBuildOutputServer,
+      execLayerFunctionBackend,
     });
 
     this._logger = getLogger(this.constructor.name);
@@ -271,7 +275,7 @@ export default class EdgeMiddlewareStep {
       body = `${json}\n`;
     } else if (accept.includes('html')) {
       headers['content-type'] = 'text/html';
-      body = this._templateEngine.redirectTemplate({ location, statusCode });
+      body = this._vercelBuildOutputServer.templateEngine.redirectTemplate({ location, statusCode });
     } else {
       headers['content-type'] = 'text/plain';
       body = `Redirecting to ${location} (${statusCode})\n`;
@@ -316,7 +320,7 @@ export default class EdgeMiddlewareStep {
 
       let view: string;
       if (statusCode === 404) {
-        view = this._templateEngine.errorTemplate404({
+        view = this._vercelBuildOutputServer.templateEngine.errorTemplate404({
           ...errorMessage,
           http_status_code: statusCode,
           http_status_description,
@@ -324,7 +328,7 @@ export default class EdgeMiddlewareStep {
           request_id: requestId,
         });
       } else if (statusCode === 502) {
-        view = this._templateEngine.errorTemplate502({
+        view = this._vercelBuildOutputServer.templateEngine.errorTemplate502({
           ...errorMessage,
           http_status_code: statusCode,
           http_status_description,
@@ -332,14 +336,14 @@ export default class EdgeMiddlewareStep {
           request_id: requestId,
         });
       } else {
-        view = this._templateEngine.errorTemplate({
+        view = this._vercelBuildOutputServer.templateEngine.errorTemplate({
           http_status_code: statusCode,
           http_status_description,
           error_code,
           request_id: requestId,
         });
       }
-      body = this._templateEngine.errorTemplateBase({
+      body = this._vercelBuildOutputServer.templateEngine.errorTemplateBase({
         http_status_code: statusCode,
         http_status_description,
         view,
@@ -363,7 +367,7 @@ export default class EdgeMiddlewareStep {
 
   onCheckFilesystem(pathname: string) {
     this._logger?.debug('onCheckFilesystem', {pathname});
-    const result = this._assetsCollection.getAsset(pathname) != null;
+    const result = this._vercelBuildOutputServer.assetsCollection.getAsset(pathname) != null;
     this._logger?.debug({result});
     return result;
   }
@@ -374,7 +378,7 @@ export default class EdgeMiddlewareStep {
     client: ClientInfo,
     routeMatcherContext: RouteMatcherContext,
   ) {
-    const asset = this._assetsCollection.getAsset(middlewarePath);
+    const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(middlewarePath);
     if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
       // not found (or wasn't a edge function)
       // TODO: should probably find a way to return an error.
