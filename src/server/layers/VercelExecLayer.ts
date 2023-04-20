@@ -39,15 +39,22 @@ export default class VercelExecLayer {
       throw new Error('Function ' + functionPathname + ' not found (or not edge function)');
     }
 
+    let clientAddress = request.headers.get('x-real-ip') ?? '';
+    if (!clientAddress) {
+      clientAddress = client.address ?? '';
+      if (clientAddress) {
+        request.headers.set('x-real-ip', clientAddress);
+      }
+    }
+
     if (backend != null) {
       // TODO: Also handle dynamic backends
-      prepareExecLayerRequest(request, client, functionPathname);
+      prepareExecLayerRequest(request, functionPathname);
       return await fetch(request, {
         backend,
       });
     }
 
-    const clientAddress = request.headers.get('x-real-ip') ?? client.address;
     if (clientAddress) {
       const geo = getGeolocationForIpAddress(clientAddress);
       request.headers.set('x-vercel-ip-city', geo.city ?? '');

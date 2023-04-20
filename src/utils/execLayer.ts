@@ -3,16 +3,10 @@ const EXEC_LAYER_FUNCTION_PATHNAME = 'x-xl-call-pathname';
 /**
  * Add headers to prepare the request for the exec layer
  * @param request
- * @param client
  * @param functionPathname
  */
-export function prepareExecLayerRequest(request: Request, client: ClientInfo, functionPathname?: string) {
+export function prepareExecLayerRequest(request: Request, functionPathname?: string) {
   request.headers.set(EXEC_LAYER_FUNCTION_PATHNAME, functionPathname ?? new URL(request.url).pathname);
-
-  const clientAddress = client.address ?? '';
-  if (clientAddress) {
-    request.headers.set('x-real-ip', clientAddress);
-  }
 }
 
 /**
