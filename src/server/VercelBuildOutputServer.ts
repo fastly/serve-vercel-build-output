@@ -3,12 +3,12 @@ import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import { Config } from "../types/config.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
-import { Backends, BackendsDefs, EdgeFunctionContext, RequestContext } from "./types.js";
+import { Backends, BackendsDefs, EdgeFunctionContext } from "./types.js";
 import { generateRequestId } from "../utils/request.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
-import { isExecLayerRequest } from "../utils/execLayer.js";
+import { execLayerFunctionPathnameFromRequest, isExecLayerRequest } from "../utils/execLayer.js";
 
 export type ServerConfig = {
   backends: Backends | 'dynamic',
@@ -83,7 +83,7 @@ export default class VercelBuildOutputServer {
     });
 
     this.vercelExecLayer = new VercelExecLayer({
-      assetsCollection,
+      vercelBuildOutputServer: this,
     });
 
     this._logger = getLogger(this.constructor.name);
@@ -109,20 +109,26 @@ export default class VercelBuildOutputServer {
     client: ClientInfo,
     edgeFunctionContext: EdgeFunctionContext,
   ): Promise<Response> {
+
+    if (isExecLayerRequest(request)) {
+      const functionPathname = execLayerFunctionPathnameFromRequest(request);
+      return await this.vercelExecLayer.execFunction(
+        request,
+        client,
+        edgeFunctionContext,
+        functionPathname,
+        undefined,
+      );
+    }
+
     // Fastly: build requestId from POP ID
     const requestId = generateRequestId(env('FASTLY_POP') || 'local');
 
-    const requestContext: RequestContext = {
+    return await this._edgeMiddlewareStep.doStep({
       client,
       request,
       requestId,
       edgeFunctionContext,
-    };
-
-    if (isExecLayerRequest(request)) {
-      return await this.vercelExecLayer.execFunction(requestContext);
-    }
-
-    return await this._edgeMiddlewareStep.doStep(requestContext);
+    });
   }
 }

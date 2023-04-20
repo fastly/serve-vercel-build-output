@@ -18,9 +18,8 @@ import { arrayToReadableStream } from "../utils/stream.js";
 import { getBackendInfo } from "../utils/backends.js";
 import { generateErrorMessage, generateHttpStatusDescription } from "../utils/errors.js";
 import EdgeNetworkCacheStep from "./EdgeNetworkCacheStep.js";
-import { fetchThroughExecLayer } from "../utils/execLayer.js";
 import { normalizeUrlLocalhost } from "../utils/request.js";
-import { VercelBuildOutputServer } from "../server/index.js";
+import VercelBuildOutputServer from "../server/VercelBuildOutputServer.js";
 
 export type EdgeMiddlewareStepInit = {
   config: Config,
@@ -58,7 +57,7 @@ export default class EdgeMiddlewareStep {
     requestContext: RequestContext,
   ) {
 
-    const { client, request, requestId } = requestContext;
+    const { client, request, requestId, edgeFunctionContext } = requestContext;
 
     const routeMatcherContext = createRouteMatcherContext(request);
 
@@ -80,7 +79,7 @@ export default class EdgeMiddlewareStep {
     routeMatcher.onCheckFilesystem =
       pathname => this.onCheckFilesystem(pathname);
     routeMatcher.onMiddleware = (middlewarePath, routeMatcherContext) =>
-      this.onMiddleware(middlewarePath, request, client, routeMatcherContext);
+      this.onMiddleware(requestContext, middlewarePath, routeMatcherContext);
     const routeMatchResult = await routeMatcher.doRouter(routeMatcherContext);
     this._logger?.info('returned from router');
 
@@ -348,9 +347,8 @@ export default class EdgeMiddlewareStep {
   }
 
   async onMiddleware(
+    requestContext: RequestContext,
     middlewarePath: string,
-    request: Request,
-    client: ClientInfo,
     routeMatcherContext: RouteMatcherContext,
   ) {
     const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(middlewarePath);
@@ -368,7 +366,16 @@ export default class EdgeMiddlewareStep {
     const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
     middlewareRequest.setCacheOverride(new CacheOverride("pass"));
 
-    const middlewareResponse = await fetchThroughExecLayer(middlewareRequest, client, middlewarePath);
+    const { request, client, edgeFunctionContext } = requestContext;
+
+    const middlewareResponse =
+      await this._vercelBuildOutputServer.vercelExecLayer.execFunction(
+        middlewareRequest,
+        client,
+        edgeFunctionContext,
+        middlewarePath,
+        this._vercelBuildOutputServer.serverConfig.execLayerMiddlewareBackend,
+      );
 
     const baseUrl = normalizeUrlLocalhost(request.url);
     const result = processMiddlewareResponse(middlewareResponse, baseUrl);

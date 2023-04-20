@@ -1,9 +1,7 @@
 import { getLogger, ILogger } from "../logging/index.js";
 import { RouteMatcherContext, routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
-import FunctionAsset from "../assets/FunctionAsset.js";
 import { RequestContext } from "../server/types.js";
-import { fetchThroughExecLayer } from "../utils/execLayer.js";
-import { VercelBuildOutputServer } from "../server/index.js";
+import VercelBuildOutputServer from "../server/VercelBuildOutputServer.js";
 
 export type FunctionsStepInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,
@@ -28,16 +26,14 @@ export default class FunctionsStep {
   ) {
 
     const request = routeMatcherContextToRequest(routeMatcherContext);
-    const client = requestContext.client;
+    const { client, edgeFunctionContext } = requestContext;
 
-    const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(pathname);
-    if (!(asset instanceof FunctionAsset)) {
-      if (asset == null) {
-        throw new Error(`Unknown asset: ${pathname}`);
-      }
-      throw new Error('Unknown asset type ' + pathname);
-    }
-
-    return await fetchThroughExecLayer(request, client);
+    return await this._vercelBuildOutputServer.vercelExecLayer.execFunction(
+      request,
+      client,
+      edgeFunctionContext,
+      pathname,
+      this._vercelBuildOutputServer.serverConfig.execLayerFunctionBackend,
+    );
   }
 }

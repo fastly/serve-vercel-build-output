@@ -4,7 +4,7 @@ import StaticAsset from "../assets/StaticAsset.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import FunctionsStep from "./FunctionsStep.js";
 import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
-import { VercelBuildOutputServer } from "../server/index.js";
+import VercelBuildOutputServer from "../server/VercelBuildOutputServer.js";
 
 export type EdgeNetworkCacheStepInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,

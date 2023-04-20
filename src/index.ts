@@ -9,5 +9,5 @@ export * from './logging/index.js';
 export * from './utils/index.js';
 export * from './server/index.js';
 
-import { VercelBuildOutputServer } from './server/index.js';
+import VercelBuildOutputServer from "./server/VercelBuildOutputServer.js";
 export default VercelBuildOutputServer;

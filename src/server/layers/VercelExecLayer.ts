@@ -1,33 +1,36 @@
 import { getGeolocationForIpAddress } from "fastly:geolocation";
-import AssetsCollection from "../../assets/AssetsCollection.js";
 import FunctionAsset from "../../assets/FunctionAsset.js";
-import { EdgeFunction, RequestContext } from "../types.js";
+import { EdgeFunction, EdgeFunctionContext } from "../types.js";
 import { getLogger, ILogger } from "../../logging/index.js";
-import { execLayerFunctionPathnameFromRequest } from "../../utils/execLayer.js";
+import { prepareExecLayerRequest } from "../../utils/execLayer.js";
+import VercelBuildOutputServer from "../../server/VercelBuildOutputServer.js";
 
 export type VercelExecLayerInit = {
-  assetsCollection: AssetsCollection,
+  vercelBuildOutputServer: VercelBuildOutputServer,
 }
 
 export default class VercelExecLayer {
-  private _assetsCollection: AssetsCollection;
+  private _vercelBuildOutputServer: VercelBuildOutputServer;
   private _logger: ILogger;
 
   constructor(
     init: VercelExecLayerInit
   ) {
-    const { assetsCollection } = init;
-    this._assetsCollection = assetsCollection;
+    const {
+      vercelBuildOutputServer,
+    } = init;
+    this._vercelBuildOutputServer = vercelBuildOutputServer;
     this._logger = getLogger(this.constructor.name);
   }
 
   async execFunction(
-    requestContext: RequestContext,
+    request: Request,
+    client: ClientInfo,
+    edgeFunctionContext: EdgeFunctionContext,
+    functionPathname: string,
+    backend: string | undefined,
   ) {
-    const { request, edgeFunctionContext } = requestContext;
-    const functionPathname = execLayerFunctionPathnameFromRequest(request);
-
-    const asset = this._assetsCollection.getAsset(functionPathname);
+    const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(functionPathname);
     if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
       // not found (or wasn't a edge function)
       // TODO: should probably find a way to return an error.
@@ -36,9 +39,15 @@ export default class VercelExecLayer {
       throw new Error('Function ' + functionPathname + ' not found (or not edge function)');
     }
 
-    const func = (await asset.loadModule()).default as EdgeFunction;
+    if (backend != null) {
+      // TODO: Also handle dynamic backends
+      prepareExecLayerRequest(request, client, functionPathname);
+      return await fetch(request, {
+        backend,
+      });
+    }
 
-    const clientAddress = request.headers.get('x-real-ip');
+    const clientAddress = request.headers.get('x-real-ip') ?? client.address;
     if (clientAddress) {
       const geo = getGeolocationForIpAddress(clientAddress);
       request.headers.set('x-vercel-ip-city', geo.city ?? '');
@@ -48,6 +57,7 @@ export default class VercelExecLayer {
       request.headers.set('x-vercel-ip-longitude', String(geo.longitude));
     }
 
+    const func = (await asset.loadModule()).default as EdgeFunction;
     return await func(request, edgeFunctionContext);
   }
 }

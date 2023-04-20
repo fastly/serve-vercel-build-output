@@ -1,24 +1,18 @@
 const EXEC_LAYER_FUNCTION_PATHNAME = 'x-xl-call-pathname';
-const EXEC_LAYER_BACKEND = 'self';
 
 /**
- * Performs a fetch using the provided request
- * Note: This modifies and consumes the provided request
+ * Add headers to prepare the request for the exec layer
  * @param request
  * @param client
  * @param functionPathname
  */
-export async function fetchThroughExecLayer(request: Request, client: ClientInfo, functionPathname?: string) {
+export function prepareExecLayerRequest(request: Request, client: ClientInfo, functionPathname?: string) {
   request.headers.set(EXEC_LAYER_FUNCTION_PATHNAME, functionPathname ?? new URL(request.url).pathname);
 
   const clientAddress = client.address ?? '';
   if (clientAddress) {
     request.headers.set('x-real-ip', clientAddress);
   }
-
-  return await fetch(request, {
-    backend: EXEC_LAYER_BACKEND,
-  });
 }
 
 /**
