@@ -64,6 +64,21 @@ globalThis.Headers.prototype.getAll = function(key) {
 };
 
 // Response.json (static)
-globalThis.Response.json = function(data, init) {
-    return new Response(JSON.stringify(data), init);
+if (typeof globalThis.Response.json !== 'function') {
+    globalThis.Response.json = function(data, init) {
+        return new Response(JSON.stringify(data), init);
+    };
+}
+
+// __import_unsupported: Prevent it from being defined more than once.
+const oldObjectDefineProperty = Object.defineProperty;
+let __import_unsupported_already_assigned = false;
+Object.defineProperty = (...args) => {
+    if(args[0] === globalThis && args[1] === '__import_unsupported') {
+        if (__import_unsupported_already_assigned) {
+            return args[0];
+        }
+        __import_unsupported_already_assigned = true;
+    }
+    return oldObjectDefineProperty.apply(Object, args);
 };
