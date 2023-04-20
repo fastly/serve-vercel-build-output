@@ -57,7 +57,7 @@ export default class EdgeMiddlewareStep {
     requestContext: RequestContext,
   ) {
 
-    const { client, request, requestId, edgeFunctionContext } = requestContext;
+    const { client, request, requestId } = requestContext;
 
     const routeMatcherContext = createRouteMatcherContext(request);
 
@@ -89,19 +89,9 @@ export default class EdgeMiddlewareStep {
 
     // TODO: Make sure that these responses get the headers and status applied to them
 
-    if (routeMatchResult.type === 'synthetic') {
-      return this.serveSyntheticResponse(
-        routeMatchResult
-      );
-    }
-
-    if (routeMatchResult.type === 'proxy') {
-      return this.serveProxyResponse(
-        routeMatchResult.dest,
-        routeMatcherContext,
-        request,
-        client,
-      );
+    if (!['redirect', 'error', 'synthetic', 'proxy', 'filesystem'].includes(routeMatchResult.type)) {
+      // Unknown routeMatchResult.type
+      return this.serveErrorResponse();
     }
 
     if (routeMatchResult.type === 'redirect') {
@@ -123,11 +113,31 @@ export default class EdgeMiddlewareStep {
       );
     }
 
-    if (routeMatchResult.type !== 'filesystem') {
-      return this.serveErrorResponse();
+    let response;
+
+    if (routeMatchResult.type === 'synthetic') {
+      response = await this.serveSyntheticResponse(
+        routeMatchResult
+      );
+    } else if (routeMatchResult.type === 'proxy') {
+      response = await this.serveProxyResponse(
+        routeMatchResult.dest,
+        routeMatcherContext,
+        request,
+        client,
+      );
+    } else {
+      response = await this._edgeNetworkCacheStep.doStep(
+        requestContext,
+        routeMatcherContext,
+        routeMatchResult.dest
+      );
     }
 
-    return await this._edgeNetworkCacheStep.doStep(requestContext, routeMatcherContext, routeMatchResult.dest);
+    return new Response(response.body, {
+      status: response.status ?? 200,
+      headers: this.buildResponseHeaders(headersToObject(response.headers), requestId),
+    });
 
   }
 
@@ -364,6 +374,8 @@ export default class EdgeMiddlewareStep {
     }
 
     const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
+
+    // Middleware always runs on every request, so we bypass the cache
     middlewareRequest.setCacheOverride(new CacheOverride("pass"));
 
     const { request, client, edgeFunctionContext } = requestContext;
@@ -377,6 +389,7 @@ export default class EdgeMiddlewareStep {
         this._vercelBuildOutputServer.serverConfig.execLayerMiddlewareBackend,
       );
 
+    // Process response (including response headers, response body)
     const baseUrl = normalizeUrlLocalhost(request.url);
     const result = processMiddlewareResponse(middlewareResponse, baseUrl);
     this._logger?.debug({baseUrl, result});

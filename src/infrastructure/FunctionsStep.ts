@@ -28,6 +28,8 @@ export default class FunctionsStep {
     const request = routeMatcherContextToRequest(routeMatcherContext);
     const { client, edgeFunctionContext } = requestContext;
 
+    // TODO: figure out how to handle the response headers relating to caching
+
     return await this._vercelBuildOutputServer.vercelExecLayer.execFunction(
       request,
       client,
