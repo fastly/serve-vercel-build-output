@@ -373,12 +373,15 @@ export default class EdgeMiddlewareStep {
       };
     }
 
+    this._logger?.debug({routeMatcherContext});
     const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
+    this._logger?.debug({middlewareRequest});
 
     // Middleware always runs on every request, so we bypass the cache
     middlewareRequest.setCacheOverride(new CacheOverride("pass"));
 
     const { request, client, edgeFunctionContext } = requestContext;
+    this._logger?.debug('requestContext', request.url);
 
     const middlewareResponse =
       await this._vercelBuildOutputServer.vercelExecLayer.execFunction(
@@ -388,11 +391,13 @@ export default class EdgeMiddlewareStep {
         middlewarePath,
         this._vercelBuildOutputServer.serverConfig.execLayerMiddlewareBackend,
       );
+    this._logger?.debug({middlewareResponse});
 
     // Process response (including response headers, response body)
     const baseUrl = normalizeUrlLocalhost(request.url);
+    this._logger?.debug({baseUrl});
     const result = processMiddlewareResponse(middlewareResponse, baseUrl);
-    this._logger?.debug({baseUrl, result});
+    this._logger?.debug({result});
     return result;
   }
 }

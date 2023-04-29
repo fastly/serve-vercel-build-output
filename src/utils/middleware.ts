@@ -1,8 +1,11 @@
 import { HttpHeaders, MiddlewareResponse } from "../types/routing.js";
 import { relativizeURL } from "./routing.js";
 import { normalizeUrlLocalhost } from "./request.js";
+import { getLogger } from "../logging/index.js";
 
 export function processMiddlewareResponse(response: Response, baseUrl: string): MiddlewareResponse {
+
+  const logger = getLogger('middleware');
 
   let returnResponse = true;
   let isContinue = false;
@@ -16,7 +19,9 @@ export function processMiddlewareResponse(response: Response, baseUrl: string): 
   // set request headers
   // set response cookies, and set response headers
   // you are not allowed to try to modify the response body here.
-  if (response.headers.get('x-middleware-next') === '1') {
+  const middlewareNextHeaderValue = response.headers.get('x-middleware-next');
+  logger.debug({middlewareNextHeaderValue});
+  if (middlewareNextHeaderValue === '1') {
     response.headers.delete('x-middleware-next');
     returnResponse = false;
     isContinue = true;
@@ -24,6 +29,7 @@ export function processMiddlewareResponse(response: Response, baseUrl: string): 
 
   // redirect - Location header
   const locationHeader = response.headers.get('Location');
+  logger.debug({locationHeader});
   if (locationHeader != null) {
     status = response.status;
     returnResponse = false;
@@ -31,6 +37,7 @@ export function processMiddlewareResponse(response: Response, baseUrl: string): 
 
   // rewrite - x-middleware-rewrite
   const rewriteHeaderValue = response.headers.get('x-middleware-rewrite');
+  logger.debug({rewriteHeaderValue});
   if (rewriteHeaderValue != null) {
     returnResponse = false;
     response.headers.delete('x-middleware-rewrite');
@@ -44,10 +51,12 @@ export function processMiddlewareResponse(response: Response, baseUrl: string): 
   // x-middleware-override-headers
   // set these on request headers before going to next
   const overrideHeaders = response.headers.get('x-middleware-override-headers');
+  logger.debug('overrideHeaders');
   if (overrideHeaders != null) {
     response.headers.delete('x-middleware-override-headers');
     for (const key of overrideHeaders.split(',')) {
       const value = response.headers.get('x-middleware-request-' + key);
+      logger.debug({key, value});
       if (value != null) {
         response.headers.delete('x-middleware-request-' + key);
         if (requestHeaders == null) {
