@@ -1,6 +1,5 @@
 import { env } from "fastly:env";
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
-import { Config } from "../types/config.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
 import { Backends, BackendsDefs, EdgeFunctionContext } from "./types.js";
@@ -26,31 +25,44 @@ export type ServerInit = {
   modulePath?: string,
   contentAssets: ContentAssets,
   moduleAssets: ModuleAssets,
-  config: Config,
   serverConfig?: ServerConfigInit,
 };
 
 export default class VercelBuildOutputServer {
-  assetsCollection: AssetsCollection;
-  templateEngine: VercelBuildOutputTemplateEngine;
-  vercelExecLayer: VercelExecLayer;
-  serverConfig: ServerConfig;
+  readonly contentAssets: ContentAssets;
+  readonly moduleAssets: ModuleAssets;
+  readonly assetsCollection: AssetsCollection;
+  readonly templateEngine: VercelBuildOutputTemplateEngine;
+  readonly vercelExecLayer: VercelExecLayer;
+  readonly serverConfig: ServerConfig;
   _edgeMiddlewareStep: EdgeMiddlewareStep;
-  _logger?: ILogger;
+  _logger: ILogger;
 
   constructor(
     init: ServerInit,
   ) {
-    const { config, serverConfig } = init;
+    const {
+      contentAssets,
+      moduleAssets,
+      serverConfig,
+    } = init;
+
+    this.contentAssets = contentAssets;
+    this.moduleAssets = moduleAssets;
+
+    const configJson = contentAssets.getAsset('/config.json');
+    if(configJson == null || !configJson.getMetadata().text) {
+      throw "Could not load text asset config.json";
+    }
+    const config = JSON.parse(configJson.getText());
 
     this.templateEngine = new VercelBuildOutputTemplateEngine(init.modulePath);
 
-    const assetsCollection = new AssetsCollection(
-      init.contentAssets,
-      init.moduleAssets,
+    this.assetsCollection = new AssetsCollection(
+      contentAssets,
+      moduleAssets,
       config.overrides,
     );
-    this.assetsCollection = assetsCollection;
 
     let backends: Backends | 'dynamic';
     if (serverConfig?.backends === 'dynamic') {
@@ -76,7 +88,6 @@ export default class VercelBuildOutputServer {
       execLayerFunctionBackend: serverConfig?.execLayerFunctionBackend,
     };
 
-
     this._edgeMiddlewareStep = new EdgeMiddlewareStep({
       config,
       vercelBuildOutputServer: this,
@@ -87,6 +98,24 @@ export default class VercelBuildOutputServer {
     });
 
     this._logger = getLogger(this.constructor.name);
+  }
+
+  public async callInitModules() {
+    for (const assetKey of this.moduleAssets.getAssetKeys()) {
+      if (assetKey.startsWith('/init/')) {
+        const initModule = this.moduleAssets.getAsset(assetKey);
+        if (initModule == null) {
+          this._logger.warn(`asset '${assetKey}' does not exist.`);
+          continue;
+        }
+        const fn = (await initModule.getModule()).default;
+        if (typeof fn !== 'function') {
+          this._logger.warn(`asset '${assetKey}' exists but does not export a function.`);
+          continue;
+        }
+        await fn(this);
+      }
+    }
   }
 
   public createHandler() {
