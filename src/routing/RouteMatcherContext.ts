@@ -171,7 +171,10 @@ export function routeMatcherContextToRequest(routeMatcherContext: RouteMatcherCo
 export function routeMatcherContextBaseUrl(routeMatcherContext: RouteMatcherContext) {
   let proto = 'https';
   if (
-    routeMatcherContext.host === 'localhost' || routeMatcherContext.host === '127.0.0.1'
+    routeMatcherContext.host === 'localhost' ||
+    routeMatcherContext.host.startsWith('localhost:') ||
+    routeMatcherContext.host === '127.0.0.1' ||
+    routeMatcherContext.host.startsWith('127.0.0.1:')
   ) {
     proto = 'http';
   }
