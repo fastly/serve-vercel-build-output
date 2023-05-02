@@ -1,16 +1,13 @@
-import { BackendDef, Backends, BackendsDefs } from "./types.js";
-import VercelBuildOutputServer, {
-  ServerConfig,
-  ServerInit,
-  ServerConfigInit,
-} from "./VercelBuildOutputServer.js";
+/*
+ * Copyright Fastly, Inc.
+ * Licensed under the MIT license. See LICENSE file for details.
+ */
 
-export {
-  BackendDef,
-  BackendsDefs,
-  Backends,
-  ServerConfig,
-  ServerInit,
-  ServerConfigInit,
-  VercelBuildOutputServer,
-};
+/// <reference types='@fastly/js-compute' />
+
+export * from './logging/index.js';
+export * from './utils/index.js';
+export * from './server/index.js';
+
+import VercelBuildOutputServer from './server/VercelBuildOutputServer.js';
+export default VercelBuildOutputServer;

@@ -7,8 +7,8 @@ import {
   requestToRouteMatcherContext,
   RouteMatcherContext,
   routeMatcherContextToRequest
-} from '../../../src/routing/RouteMatcherContext.js';
-import { headersToObject } from "../../../src/utils/query.js";
+} from '../../../src/server/routing/RouteMatcherContext.js';
+import { headersToObject } from "../../../src/server/utils/query.js";
 import { deepStrictEqualNullProto } from "../../test_utils/assert.js";
 
 const decoder = new TextDecoder();

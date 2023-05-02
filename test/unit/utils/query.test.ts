@@ -3,7 +3,7 @@
 
 import * as assert from 'assert';
 
-import { headersToObject } from "../../../src/utils/query.js";
+import { headersToObject } from "../../../src/server/utils/query.js";
 import { deepStrictEqualNullProto } from "../../test_utils/assert.js";
 
 describe('utils/query', function() {

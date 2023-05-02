@@ -3,7 +3,7 @@ import FunctionAsset from "../../assets/FunctionAsset.js";
 import { EdgeFunction, EdgeFunctionContext } from "../types.js";
 import { getLogger, ILogger } from "../../logging/index.js";
 import { prepareExecLayerRequest } from "../../utils/execLayer.js";
-import VercelBuildOutputServer from "../../server/VercelBuildOutputServer.js";
+import VercelBuildOutputServer from "../VercelBuildOutputServer.js";
 
 export type VercelExecLayerInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,

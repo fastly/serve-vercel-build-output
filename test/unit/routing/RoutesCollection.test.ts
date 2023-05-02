@@ -7,8 +7,8 @@ import { fileURLToPath } from 'url';
 import * as assert from 'assert';
 import { Route } from '@vercel/routing-utils';
 
-import RoutesCollection from '../../../src/routing/RoutesCollection.js';
-import { Config } from '../../../src/types/config.js';
+import RoutesCollection from '../../../src/server/routing/RoutesCollection.js';
+import { Config } from '../../../src/server/types/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

@@ -2,16 +2,17 @@
   "name": "@fastly/serve-vercel-build-output",
   "version": "0.1.0-alpha.0",
   "description": "Serve Vercel Build Output (v3) on Fastly Compute@Edge",
-  "main": "./build/esm/index.js",
-  "types": "./build/esm/index.d.ts",
+  "main": "./dist/server/index.js",
+  "types": "./dist/server/index.d.ts",
   "type": "module",
   "scripts": {
     "prepack": "npm run build",
-    "clean": "rimraf build",
-    "build": "npm run test && npm run clean && npm run build-package",
-    "build-package": "npm run build-package:compile",
-    "build-package:compile": "tsc --build tsconfig.build.json",
-    "test": "c8 mocha -n no-warnings=86652 -n loader=ts-node/esm --extension ts --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
+    "clean": "rimraf dist",
+    "build": "npm run test && npm run clean && npm run build-server",
+    "build-server": "npm run build-server:compile",
+    "build-server:compile": "tsc --build tsconfig.server.json",
+    "test": "npm run test-server",
+    "test-server": "c8 mocha -n no-warnings=86652 -n loader=ts-node/esm --extension ts --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
   },
   "repository": {
     "type": "git",
@@ -54,10 +55,10 @@
     "typescript": "^5.0.4"
   },
   "files": [
-    "build/esm/**/*.js",
-    "build/esm/**/*.js.map",
-    "build/esm/**/*.ts.map",
-    "build/esm/**/*.d.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.ts.map",
+    "dist/**/*.d.ts",
     "resources/**/*",
     "polyfills.js",
     "LICENSE",

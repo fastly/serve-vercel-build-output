@@ -5,9 +5,9 @@ import * as assert from 'assert';
 import { Route } from "@vercel/routing-utils";
 
 import { deepStrictEqualNullProto } from "../../test_utils/assert.js";
-import RoutesCollection from "../../../src/routing/RoutesCollection.js";
-import RouteMatcher from "../../../src/routing/RouteMatcher.js";
-import { createRouteMatcherContext } from "../../../src/routing/RouteMatcherContext.js";
+import RoutesCollection from "../../../src/server/routing/RoutesCollection.js";
+import RouteMatcher from "../../../src/server/routing/RouteMatcher.js";
+import { createRouteMatcherContext } from "../../../src/server/routing/RouteMatcherContext.js";
 
 describe('routing/RouteMatcher', function () {
   describe('RouteMatcher', function () {
