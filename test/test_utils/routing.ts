@@ -215,7 +215,6 @@ export function performChecks(routeMatcher: RouteMatcher, checksFile: ChecksFile
         const url = new URL(check.request.src, 'https://www.example.com/');
         const routeMatcherContext = createRouteMatcherContext(String(url));
         routerResultHolder.item = await routeMatcher.doRouter(routeMatcherContext);
-        //console.log(routerResultHolder);
       });
 
       switch(check.result.type) {
