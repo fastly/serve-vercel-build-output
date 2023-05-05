@@ -31,8 +31,9 @@ type PackageJson = {
   [SVBO_TRANSFORM_KEY]?: string | string[],
 };
 
+type TransformResult = void | boolean;
 type TransformFunction = {
-  (ctx: TransformContext): Promise<void>,
+  (ctx: TransformContext): Promise<TransformResult> | TransformResult,
   transformType: string,
   priority?: number,
   module?: string,
@@ -74,15 +75,9 @@ export async function main() {
 
   await copyConfigFile();
 
-  // At the end, writes the context object to ./.svbo.json
-  // This is used by webpack.config.js to decide whether to load the polyfills needed by next-compute-js-server
-
   await copyStaticFiles(ctxBase);
 
   await copyFunctionFiles(ctxBase, transforms);
-
-
-
 }
 
 
@@ -224,11 +219,32 @@ async function copyFunctionFiles(
     path.join(TRANSFORM_SOURCE_DIR, VERCEL_FUNCTIONS_DIRNAME),
     path.join(TRANSFORM_TARGET_DIR, VERCEL_FUNCTIONS_DIRNAME),
     async (src, dest, isDirectory) => {
-      if (!isDirectory || !src.endsWith('.func')) {
+      if (!isDirectory) {
+        // Copy individual files over directly
+        // e.g., /functions/foo.func/index.js
         return true;
       }
 
-      // This is a single function
+      // If the directory name does not end with ".func" then this is a normal
+      // directory, so we simply recurse into it
+      // e.g., /functions/foo, /functions/foo.func/my_files
+      if (!src.endsWith('.func')) {
+        return true;
+      }
+
+      // If the directory name contains ".func/" somewhere, then it means we are
+      // at least one level deep into a function.
+      // e.g., /functions/foo.func/bar.func
+      // This should not really ever happen, but we safeguard this and don't perform
+      // transform functions in this case.
+      if (src.includes('.func/')) {
+        return true;
+      }
+
+      // If we are here, then the current asset is a single function
+      // e.g., /functions/index.func, /functions/foo.func, /functions/foo/bar.func
+      // We perform our series of transformations on it
+      let handled = false;
       for (const fn of applicableFunctions) {
         const ctx = {
           ...ctxBase,
@@ -239,7 +255,17 @@ async function copyFunctionFiles(
           functionFilesTargetPath: dest,
         };
 
-        await fn(ctx);
+        const result = await fn(ctx);
+        if (result) {
+          handled = true;
+          break;
+        }
+      }
+
+      if (!handled) {
+        // If this was not handled, then we take the default action of
+        // recursing into the folder.
+        return true;
       }
 
       return false;
