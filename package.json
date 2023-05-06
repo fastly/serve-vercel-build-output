@@ -8,16 +8,16 @@
   "scripts": {
     "prepack": "npm run build",
     "clean": "rimraf dist",
-    "build": "npm run test && npm run clean && npm run build-server && npm run build-cli",
+    "build": "npm run test && npm run clean && npm run build-server && npm run build-node",
     "build-server": "npm run build-server:compile",
     "build-server:compile": "tsc --build tsconfig.server.json",
-    "build-cli": "npm run build-cli:compile",
-    "build-cli:compile": "tsc --build tsconfig.cli.json",
+    "build-node": "npm run build-node:compile",
+    "build-node:compile": "tsc --build tsconfig.node.json",
     "test": "npm run test-server",
     "test-server": "#c8 mocha -n no-warnings=86652 -n loader=ts-node/esm --extension ts --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
   },
   "bin": {
-    "transform": "./dist/cli/transform.js"
+    "transform": "./dist/node/cli/transform.js"
   },
   "repository": {
     "type": "git",

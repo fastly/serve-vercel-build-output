@@ -1,11 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src/cli",
-    "outDir": "dist/cli",
+    "rootDir": "src/node",
+    "outDir": "dist/node",
     "skipLibCheck": true
   },
   "include": [
-    "./src/cli/**/*.ts"
+    "./src/node/**/*.ts"
   ]
 }
