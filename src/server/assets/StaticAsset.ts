@@ -5,8 +5,8 @@ export default class StaticAsset extends AssetBase {
   contentType: string;
   contentAsset: ContentAsset;
 
-  constructor(key: string, asset: ContentAsset) {
-    super(key);
+  constructor(key: string, canonicalKey: string, asset: ContentAsset) {
+    super(key, canonicalKey);
     this.contentType = asset.getMetadata().contentType;
     this.contentAsset = asset;
   }

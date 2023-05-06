@@ -21,8 +21,8 @@ export default class FunctionAsset extends AssetBase {
 
   vcConfig: VercelFunctionConfig;
 
-  constructor(key: string, asset: ModuleAsset, vcConfig: VercelFunctionConfig) {
-    super(key);
+  constructor(key: string, canonicalKey: string, asset: ModuleAsset, vcConfig: VercelFunctionConfig) {
+    super(key, canonicalKey);
     this.asset = asset;
     this.vcConfig = vcConfig;
   }

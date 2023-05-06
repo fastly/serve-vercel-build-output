@@ -43,8 +43,7 @@ export default class AssetsCollection {
           continue;
         }
 
-
-        this.assets[assetKey] = new StaticAsset(assetKey, value);
+        this.assets[assetKey] = new StaticAsset(assetKey, key, value);
 
       }
 
@@ -79,8 +78,10 @@ export default class AssetsCollection {
           continue;
         }
 
+        const canonicalKey = key.slice(0, key.lastIndexOf('/.vc-config.json'));
+
         let assetKey = adjustIndexPathname(functionName);
-        this.assets[assetKey] = new FunctionAsset(assetKey, functionAsset, vcConfig);
+        this.assets[assetKey] = new FunctionAsset(assetKey, canonicalKey, functionAsset, vcConfig);
       }
 
     }

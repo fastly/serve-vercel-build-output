@@ -5,6 +5,10 @@ import { getLogger, ILogger } from "../../logging/index.js";
 import { prepareExecLayerRequest } from "../../utils/execLayer.js";
 import VercelBuildOutputServer from "../VercelBuildOutputServer.js";
 
+declare global {
+  var FASTLY_SVBO_PWD: string;
+}
+
 export type VercelExecLayerInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,
 }
@@ -64,7 +68,13 @@ export default class VercelExecLayer {
       request.headers.set('x-vercel-ip-longitude', String(geo.longitude));
     }
 
-    const func = (await asset.loadModule()).default as EdgeFunction;
-    return await func(request, edgeFunctionContext);
+    const prevPwd = globalThis.FASTLY_SVBO_PWD;
+    try {
+      globalThis.FASTLY_SVBO_PWD = asset.canonicalKey;
+      const func = (await asset.loadModule()).default as EdgeFunction;
+      return await func(request, edgeFunctionContext);
+    } finally {
+      globalThis.FASTLY_SVBO_PWD = prevPwd;
+    }
   }
 }
