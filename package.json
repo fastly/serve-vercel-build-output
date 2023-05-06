@@ -11,8 +11,9 @@
     "build": "npm run test && npm run clean && npm run build-server && npm run build-node",
     "build-server": "npm run build-server:compile",
     "build-server:compile": "tsc --build tsconfig.server.json",
-    "build-node": "npm run build-node:compile",
+    "build-node": "npm run build-node:compile && npm run build-node:copy-package-json",
     "build-node:compile": "tsc --build tsconfig.node.json",
+    "build-node:copy-package-json": "cp src/node/package.json dist/node/package.json",
     "test": "npm run test-server",
     "test-server": "#c8 mocha -n no-warnings=86652 -n loader=ts-node/esm --extension ts --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
   },
@@ -64,6 +65,7 @@
     "dist/**/*.js.map",
     "dist/**/*.ts.map",
     "dist/**/*.d.ts",
+    "dist/**/package.json",
     "resources/**/*",
     "polyfills.js",
     "LICENSE",

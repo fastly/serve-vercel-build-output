@@ -2,7 +2,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { createRequire } from 'node:module';
 
 import {
   applyToPackages,
@@ -44,8 +43,6 @@ type TransformFunction = {
   script?: string,
 };
 
-const require = createRequire(import.meta.url);
-
 // TODO: Turn these into command-line arguments?
 
 const NEXT_PROJECT_PATH = path.resolve('../');
@@ -57,7 +54,7 @@ const VERCEL_CONFIG_FILENAME = 'config.json';
 const VERCEL_STATIC_DIRNAME = 'static';
 const VERCEL_FUNCTIONS_DIRNAME = 'functions';
 
-await main();
+main().then(() => {});
 
 export async function main() {
 

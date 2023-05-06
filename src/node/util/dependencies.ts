@@ -1,14 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { createRequire } from 'node:module';
 
 export type PackageJson = {
   name: string,
   dependencies?: Record<string, string>,
   devDependencies?: Record<string, string>,
 };
-
-const require = createRequire(import.meta.url);
 
 export function getDependencies(): string[] {
 
