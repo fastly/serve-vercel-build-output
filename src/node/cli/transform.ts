@@ -4,6 +4,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createRequire } from 'node:module';
 
+import {
+  applyToPackages,
+  getDependencies,
+} from '../util/dependencies.js';
+import {
+  TransformPackageJson
+} from '../types';
+import {
+  SVBO_OPTIONS_KEY,
+  SVBO_ASSET_TRANSFORM_KEY,
+} from "../constants";
+
 // This type is declared here too because the declaration is outside of rootDir
 type TransformContext = {
   transformName: string,             // package name of the transform
@@ -16,20 +28,12 @@ type TransformContext = {
 };
 type TransformContextBase = Pick<TransformContext, 'nextProjectPath' | 'buildOutputPath'>;
 
-const SVBO_TRANSFORM_KEY = '@fastly/vercel-transform';
 const TRANSFORM_DEFAULT_PRIORITY = 10;
 
 const TRANSFORM_TYPES = [
   'transformFunction',
   // and maybe 'transformStatic' too in the future?
 ];
-
-type PackageJson = {
-  name: string,
-  dependencies?: Record<string, string>,
-  devDependencies?: Record<string, string>,
-  [SVBO_TRANSFORM_KEY]?: string | string[],
-};
 
 type TransformResult = void | boolean;
 type TransformFunction = {
@@ -80,31 +84,13 @@ export async function main() {
   await copyFunctionFiles(ctxBase, transforms);
 }
 
-
-function getDependencies(): string[] {
-
-  const packageJsonFilePath = path.resolve('./package.json');
-  const packageJsonFileContents = fs.readFileSync(packageJsonFilePath, 'utf-8');
-  const packageJson = JSON.parse(packageJsonFileContents) as PackageJson;
-
-  return [
-    ...Object.keys(packageJson.dependencies ?? {}),
-    ...Object.keys(packageJson.devDependencies ?? {}),
-  ];
-
-}
-
 function findTransforms(dependencies: string[]) {
 
   const transforms: TransformFunction[] = [];
 
-  for (const dependency of dependencies) {
+  applyToPackages<TransformPackageJson>(dependencies, (packageJson, ctx) => {
 
-    const packageJsonFilePath = require.resolve(dependency + '/package.json');
-    const packageJsonFileContents = fs.readFileSync(packageJsonFilePath, 'utf-8');
-    const packageJson = JSON.parse(packageJsonFileContents) as PackageJson;
-
-    let transformScripts = packageJson?.[SVBO_TRANSFORM_KEY];
+    let transformScripts = packageJson?.[SVBO_OPTIONS_KEY]?.[SVBO_ASSET_TRANSFORM_KEY];
     if (transformScripts == null) {
       transformScripts = [];
     } else if (!Array.isArray(transformScripts)) {
@@ -112,7 +98,7 @@ function findTransforms(dependencies: string[]) {
     }
 
     for (const transformScript of transformScripts) {
-      const transformScriptPath = path.resolve(path.dirname(packageJsonFilePath), transformScript);
+      const transformScriptPath = path.resolve(ctx.packagePath, transformScript);
 
       const defaultImport = (require(transformScriptPath).default) as any;
       if (
@@ -123,7 +109,7 @@ function findTransforms(dependencies: string[]) {
       }
 
       const transformFunction = defaultImport as TransformFunction;
-      transformFunction.module = dependency;
+      transformFunction.module = ctx.packageName;
       transformFunction.script = transformScript;
       if (transformFunction.priority == null) {
         transformFunction.priority = TRANSFORM_DEFAULT_PRIORITY;
@@ -132,7 +118,7 @@ function findTransforms(dependencies: string[]) {
       transforms.push(transformFunction);
     }
 
-  }
+  });
 
   transforms.sort((a, b) => {
     return a.priority! - b.priority!;
