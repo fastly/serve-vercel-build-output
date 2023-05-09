@@ -133,7 +133,7 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
   }
 
   get dest(): string {
-    return this.pathname + (formatQueryString(this.query) ?? '');
+    return this.pathname;
   }
 
 }

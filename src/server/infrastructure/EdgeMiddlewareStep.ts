@@ -83,9 +83,7 @@ export default class EdgeMiddlewareStep {
     const routeMatchResult = await routeMatcher.doRouter(routeMatcherContext);
     this._logger?.info('returned from router');
 
-    this._logger?.debug('routeMatchResult', routeMatchResult);
-
-    this._logger?.info('routeMatchResult.type', routeMatchResult.type);
+    this._logger?.debug('routeMatchResult', JSON.stringify(routeMatchResult, null, 2));
 
     // TODO: Make sure that these responses get the headers and status applied to them
 
