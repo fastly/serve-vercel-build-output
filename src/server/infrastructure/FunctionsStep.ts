@@ -1,7 +1,9 @@
 import { getLogger, ILogger } from "../logging/index.js";
-import { RouteMatcherContext, routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
-import { RequestContext } from "../server/types.js";
+import { routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
 import VercelBuildOutputServer from "../server/VercelBuildOutputServer.js";
+
+import type { RequestContext } from "../server/types.js";
+import type { RouteMatcherContext } from "../types/routing";
 
 export type FunctionsStepInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,

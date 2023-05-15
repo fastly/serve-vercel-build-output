@@ -3,8 +3,6 @@ import RoutesCollection from "../routing/RoutesCollection.js";
 import { Config } from "../types/config.js";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher.js";
 import {
-  createRouteMatcherContext,
-  RouteMatcherContext,
   routeMatcherContextToRequest
 } from "../routing/RouteMatcherContext.js";
 import RouteMatcher from "../routing/RouteMatcher.js";
@@ -12,7 +10,7 @@ import { RequestContext } from "../server/types.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import { processMiddlewareResponse } from "../utils/middleware.js";
-import { HttpHeaders, RouterResultSynthetic } from "../types/routing.js";
+import {HttpHeaders, RouteMatcherContext, RouterPhaseResult} from "../types/routing.js";
 import { headersToObject } from "../utils/query.js";
 import { arrayToReadableStream } from "../utils/stream.js";
 import { getBackendInfo } from "../utils/backends.js";
@@ -57,22 +55,12 @@ export default class EdgeMiddlewareStep {
     requestContext: RequestContext,
   ) {
 
-    const { client, request, requestId } = requestContext;
-
-    const routeMatcherContext = createRouteMatcherContext(request);
+    const { request } = requestContext;
 
     this._logger?.debug('requestContext', {
       requestContext
     });
-    this._logger?.debug('routeMatcherContext', {
-      method: routeMatcherContext.method,
-      host: routeMatcherContext.host,
-      pathname: routeMatcherContext.pathname,
-      headers: routeMatcherContext.headers,
-      query: routeMatcherContext.query,
-    });
 
-    this._logger?.info('calling router');
     const routeMatcher = new RouteMatcher(
       this._routesCollection,
     );
@@ -80,92 +68,130 @@ export default class EdgeMiddlewareStep {
       pathname => this.onCheckFilesystem(pathname);
     routeMatcher.onMiddleware = (middlewarePath, routeMatcherContext) =>
       this.onMiddleware(requestContext, middlewarePath, routeMatcherContext);
-    const routeMatchResult = await routeMatcher.doRouter(routeMatcherContext);
+    routeMatcher.onServeRouterResult = (routerResult, routeMatcherContext) =>
+      this.serveRouterResult(requestContext, routerResult, routeMatcherContext);
+    routeMatcher.onServeRouterError = (status, errorCode, headers) =>
+      this.serveRouterError(requestContext, status, errorCode, headers)
+
+    this._logger?.info('calling router');
+    const response = await routeMatcher.doRouter(request);
     this._logger?.info('returned from router');
 
-    this._logger?.debug('routeMatchResult', JSON.stringify(routeMatchResult, null, 2));
+    return response;
+  }
 
-    // TODO: Make sure that these responses get the headers and status applied to them
+  public async serveRouterResult(
+    requestContext: RequestContext,
+    routerResult: RouterPhaseResult,
+    routeMatcherContext: RouteMatcherContext,
+  ) {
 
-    if (!['redirect', 'error', 'synthetic', 'proxy', 'filesystem'].includes(routeMatchResult.type)) {
-      // Unknown routeMatchResult.type
-      return this.serveErrorResponse();
-    }
+    const { client, request, requestId } = requestContext;
 
-    if (routeMatchResult.type === 'redirect') {
-      return await this.sendRedirect(
+    let response: Response | undefined = undefined;
+
+    if (routerResult.type === 'redirect') {
+      response = await this.serveRedirect(
         request,
-        requestId,
-        routeMatchResult.dest,
-        routeMatchResult.status,
+        routerResult.dest!,
+        routerResult.status!,
       );
-    }
-
-    if (routeMatchResult.type === 'error') {
-      return await this.sendError(
-        request,
-        requestId,
-        '',
-        routeMatchResult.status,
-        routeMatchResult.headers,
-      );
-    }
-
-    let response;
-
-    if (routeMatchResult.type === 'synthetic') {
-      response = await this.serveSyntheticResponse(
-        routeMatchResult
-      );
-    } else if (routeMatchResult.type === 'proxy') {
+    } else if (routerResult.type === 'proxy') {
       response = await this.serveProxyResponse(
-        routeMatchResult.dest,
-        routeMatcherContext,
+        routerResult.dest!, // Can't use routeMatcherContext.pathname here because this is a full URL
         request,
         client,
+        routeMatcherContext.headers,
+        routeMatcherContext.body,
       );
-    } else {
+    } else if (routerResult.type === 'dest') {
       response = await this._edgeNetworkCacheStep.doStep(
         requestContext,
         routeMatcherContext,
-        routeMatchResult.dest
       );
+    } else if (routerResult.type === 'synthetic') {
+      if (routerResult.response == null) {
+        throw new Error('Unexpected! routerResult.response is null for synthetic result');
+      }
+      response = this.serveSyntheticResult(
+        routerResult.response
+      );
+    } else if (routerResult.type === 'error') {
+      response = await this.serveError(
+        request,
+        requestId,
+        routerResult.status,
+        null,
+      );
+    } else {
+      response = this.serveUnknownResultType();
     }
 
-    return new Response(response.body, {
-      status: response.status ?? 200,
-      headers: this.buildResponseHeaders(headersToObject(response.headers), requestId),
-    });
+    return this.serveResponse(response, requestId, routerResult.headers);
+  }
+
+  public async serveRouterError(
+    requestContext: RequestContext,
+    status: number,
+    errorCode: string | null = null,
+    headers: HttpHeaders = {},
+  ) {
+
+    const { request, requestId } = requestContext;
+
+    const response = await this.serveError(
+      request,
+      requestId,
+      status,
+      errorCode,
+    );
+
+    return this.serveResponse(response, requestId, headers);
 
   }
 
-  private serveSyntheticResponse(
-    routeMatchResult: RouterResultSynthetic
+  private serveResponse(
+    response: Response,
+    requestId: string,
+    additionalHeaders?: HttpHeaders,
   ) {
-    this._logger?.debug('Serving response from middleware');
+    return new Response(response.body, {
+      status: response.status ?? 200,
+      headers: this.buildResponseHeaders({
+        ...headersToObject(response.headers),
+        ...additionalHeaders,
+      }, requestId),
+    });
+  }
+
+  private serveSyntheticResult(
+    response: Response
+  ) {
+    this._logger?.debug('Serving synthetic response');
     this._logger?.debug({
-      status: routeMatchResult.syntheticResponse.status,
-      headers: headersToObject(routeMatchResult.syntheticResponse.headers),
+      status: response.status,
+      headers: headersToObject(response.headers),
     });
 
-    return routeMatchResult.syntheticResponse;
+    return response;
   }
 
   private serveProxyResponse(
     destUrl: string,
-    routeMatcherContext: RouteMatcherContext,
     request: Request,
     client: ClientInfo,
+    requestHeaders: HttpHeaders,
+    body: Promise<Uint8Array> | null,
   ) {
     this._logger?.debug('Serving proxy response');
 
     const requestInit: RequestInit = {};
 
-    if (routeMatcherContext.body != null) {
-      requestInit.body = arrayToReadableStream(routeMatcherContext.body);
+    if (body != null) {
+      requestInit.body = arrayToReadableStream(body);
     }
 
-    const headers = Object.assign({}, routeMatcherContext.headers);
+    const headers = Object.assign({}, requestHeaders);
 
     // rewrite host
     headers['host'] = new URL(normalizeUrlLocalhost(destUrl)).host;
@@ -233,18 +259,14 @@ export default class EdgeMiddlewareStep {
     };
   }
 
-  private async sendRedirect(
+  private async serveRedirect(
     request: Request,
-    requestId: string,
     location: string,
     statusCode: number = 302,
   ) {
     this._logger?.debug(`Serving redirect ${statusCode}: ${location}`);
 
-    const headers = this.buildResponseHeaders(
-      { location },
-      requestId,
-    );
+    const headers: HttpHeaders = { location };
 
     let body: string;
     const accept = request.headers.get('accept') ?? 'text/plain';
@@ -269,21 +291,17 @@ export default class EdgeMiddlewareStep {
     });
   }
 
-  private async sendError(
+  private async serveError(
     request: Request,
     requestId: string,
-    errorCode?: string,
     statusCode: number = 500,
-    additionalHeaders: HttpHeaders = {},
+    errorCode: string | null,
   ) {
 
-    const headers = this.buildResponseHeaders(
-      additionalHeaders,
-      requestId,
-    );
+    const headers: HttpHeaders = {};
 
     const http_status_description = generateHttpStatusDescription(statusCode);
-    const error_code = errorCode || http_status_description;
+    const error_code = errorCode ?? http_status_description;
     const errorMessage = generateErrorMessage(statusCode, error_code);
 
     let body: string;
@@ -341,7 +359,7 @@ export default class EdgeMiddlewareStep {
     });
   }
 
-  private serveErrorResponse() {
+  private serveUnknownResultType() {
     this._logger?.debug('Error response');
 
     return new Response('error', { 'headers': { 'content-type': 'text/plain' }});

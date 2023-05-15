@@ -3,8 +3,8 @@ import FunctionAsset from "../assets/FunctionAsset.js";
 import StaticAsset from "../assets/StaticAsset.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import FunctionsStep from "./FunctionsStep.js";
-import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
 import VercelBuildOutputServer from "../server/VercelBuildOutputServer.js";
+import { RouteMatcherContext } from "../types/routing";
 
 export type EdgeNetworkCacheStepInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,
@@ -31,9 +31,9 @@ export default class EdgeNetworkCacheStep {
   async doStep(
     requestContext: RequestContext,
     routeMatcherContext: RouteMatcherContext,
-    pathname: string,
   ) {
 
+    const { pathname } = routeMatcherContext;
     this._logger?.debug('Serving from filesystem');
     this._logger?.debug({
       pathname,

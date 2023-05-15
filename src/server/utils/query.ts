@@ -4,10 +4,12 @@ import { HttpHeaders } from "../types/routing.js";
  * Converts a Headers object to a dictionary
  * @param headers { Headers }
  */
-export function headersToObject(headers: Headers): HttpHeaders {
+export function headersToObject(headers: Headers | undefined): HttpHeaders {
   const result: Record<string, string> = Object.create(null);
-  for (const [key, value] of headers.entries()) {
-    result[key.toLowerCase()] = value;
+  if (headers != null) {
+    for (const [key, value] of headers.entries()) {
+      result[key.toLowerCase()] = value;
+    }
   }
   return result;
 }

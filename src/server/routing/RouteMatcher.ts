@@ -1,23 +1,34 @@
-import { HandleValue, isHandler, RouteWithSrc } from "@vercel/routing-utils";
+import { isHandler, RouteWithSrc } from "@vercel/routing-utils";
+
 import RoutesCollection from "./RoutesCollection.js";
-import { RouteMatcherContext } from "./RouteMatcherContext.js";
-import {
-  HttpHeaders,
-  MiddlewareHandler,
-  MiddlewareResponse,
-  PhaseResult,
-  PhaseRoutesResult,
-  RouteMatchResult,
-  RouterResult,
-} from "../types/routing.js";
-import { applyRouteResults, matchRoute } from "../utils/routing.js";
+import { createRouteMatcherContext } from "./RouteMatcherContext.js";
+import { isURL, resolveRouteParameters, testRoute} from "../utils/routing.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import { PromiseOrValue } from "../utils/misc.js";
 
-export type InitHeadersHandler = () => PromiseOrValue<HttpHeaders>;
+import type {
+  HttpHeaders,
+  PhaseName,
+  RouteMatcherContext,
+  RouterPhaseResult,
+  ServeRouterResultHandler,
+  MiddlewareHandler,
+  MiddlewareResponse,
+  ApplyRouteResultError,
+} from "../types/routing.js";
+import {ApplyRouteResult, ServeRouterErrorHandler} from "../types/routing.js";
 
 export type CheckFilesystemHandler =
   (pathname: string) => PromiseOrValue<boolean>;
+
+const ALLOWED_ROUTER_PHASE_RESULTS: Record<RouterPhaseResult['type'], PhaseName[]> = {
+  'redirect': [ null ],
+  'proxy': [ null, 'filesystem', 'rewrite', 'resource', ],
+  'dest': [ null, 'main', 'resource', 'filesystem', 'rewrite', 'miss', 'error', ],
+  'synthetic': [ null ],
+  'error': [ 'error' ],
+  'miss': [ null, 'main', 'resource', 'filesystem', 'rewrite', 'hit', 'miss', 'error', ],
+}
 
 export default class RouteMatcher {
 
@@ -29,7 +40,9 @@ export default class RouteMatcher {
 
   onMiddleware?: MiddlewareHandler;
 
-  onInitHeaders?: InitHeadersHandler;
+  onServeRouterResult?: ServeRouterResultHandler;
+
+  onServeRouterError?: ServeRouterErrorHandler;
 
   constructor(
     routesCollection: RoutesCollection,
@@ -60,367 +73,437 @@ export default class RouteMatcher {
 
   }
 
-  async initHeaders(): Promise<HttpHeaders> {
-    if (this.onInitHeaders != null) {
-      return this.onInitHeaders();
+  async serveRouterResult(
+    routerResult: RouterPhaseResult,
+    routeMatcherContext: RouteMatcherContext,
+  ) {
+    if (this.onServeRouterResult == null) {
+      throw new Error('Unexpected! onServeRouterResult not set.');
     }
-    return {};
+    return this.onServeRouterResult(routerResult, routeMatcherContext);
   }
 
-  handleRedirectResult(
-    phaseResults: PhaseRoutesResult[],
-    phaseResult: PhaseRoutesResult,
-  ): RouterResult | null {
-    if (phaseResult.status == null || phaseResult.status < 300 || phaseResult.status >= 400) {
-      return null;
+  async serveRouterError(
+    status: number,
+    errorCode: string | null = null,
+    headers: HttpHeaders = {},
+  ) {
+    if (this.onServeRouterError == null) {
+      throw new Error('Unexpected! onServeRouterError not set.');
     }
-
-    const location = phaseResult.headers?.['location'] ?? phaseResult.dest;
-    if (location === '') {
-      return null;
-    }
-
-    return {
-      phaseResults,
-      status: phaseResult.status,
-      dest: location,
-      headers: {},
-      type: 'redirect',
-    };
+    return this.onServeRouterError(status, errorCode, headers);
   }
 
-  handleStatusResult(
-    phaseResults: PhaseRoutesResult[],
-    phaseResult: PhaseRoutesResult,
-    headers: HttpHeaders,
-  ): RouterResult | null {
-    if (phaseResult.status == null) {
-      return null;
+  async doRouter(request: Request): Promise<Response> {
+
+    const routeMatcherContext = createRouteMatcherContext(request);
+
+    this._logger?.debug('routeMatcherContext', {
+      method: routeMatcherContext.method,
+      host: routeMatcherContext.host,
+      pathname: routeMatcherContext.pathname,
+      headers: routeMatcherContext.headers,
+      query: routeMatcherContext.query,
+    });
+
+    const phases: PhaseName[] = [
+      null,        // Initial phase
+      'main',      // Main phase
+      'resource',  // Resource phase
+    ];
+
+    let errorRouteResult: ApplyRouteResultError | null = null;
+
+    for (const phase of phases) {
+
+      routeMatcherContext.reset();
+
+      const routerPhaseResult = await this.doRouterPhase(phase, routeMatcherContext);
+
+      this._logger?.debug('routerPhaseResult', JSON.stringify(routerPhaseResult, null, 2));
+      if (routerPhaseResult.type !== 'miss') {
+
+        const applyRouteResult = await this.applyRouterPhaseResult(routerPhaseResult, routeMatcherContext);
+        this._logger?.debug('applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+        if (applyRouteResult.type === 'applied') {
+          return applyRouteResult.response;
+        }
+
+        if (applyRouteResult.type === 'error') {
+          errorRouteResult = applyRouteResult;
+          break;
+        }
+
+      }
+
+      // At the end of each phase, we check if we have an error status code,
+      // and handle it as an error if we do.
+      if (
+        routerPhaseResult.status != null &&
+        (routerPhaseResult.status < 200 || routerPhaseResult.status >= 400)
+      ) {
+        errorRouteResult = {
+          type: 'error',
+          status: routerPhaseResult.status,
+        };
+        break;
+      }
     }
 
-    return {
-      phaseResults,
-      status: phaseResult.status,
-      headers,
-      errorCode: '',
-      type: 'error',
-    };
+    // Error Phase
+    if (errorRouteResult == null) {
+      errorRouteResult = {
+        type: 'error',
+        status: 404,
+      };
+    }
+
+
+    // Error handler
+    const errorPhaseResult = await this.doRouterPhase('error', routeMatcherContext);
+    if (errorPhaseResult.type !== 'miss') {
+
+      const applyRouteResult = await this.applyRouterPhaseResult(errorPhaseResult, routeMatcherContext);
+      if (applyRouteResult.type === 'applied') {
+        return applyRouteResult.response;
+      }
+
+      if (applyRouteResult.type === 'error') {
+        return await this.serveRouterError(500, null, routeMatcherContext.headers);
+      }
+
+    }
+
+    return await this.serveRouterError(errorRouteResult.status ?? 404, errorRouteResult.errorCode, routeMatcherContext.headers);
   }
 
-  async doRouter(routeMatcherContext: RouteMatcherContext): Promise<RouterResult> {
-
-    const phaseResults: PhaseRoutesResult[] = [];
-    let status: number | undefined = undefined;
-    const headers = await this.initHeaders();
-
-    function mergeHeaders(phase: HandleValue | null, phaseHeaders: HttpHeaders | undefined) {
-      if (phaseHeaders != null) {
-        // Note: keys are already lowercase
-        for (const [key, value] of Object.entries(phaseHeaders)) {
-          if ((phase === 'hit' || phase === 'miss') && Object.prototype.hasOwnProperty.call(headers, key)) {
-            // For some reason,
-            // for hit or miss we only ADD headers, we don't overwrite.
-            continue;
-          }
-          headers[key] = value;
-        }
-      }
-    }
-
-    let phase: HandleValue | null = null;
-
-    // Phases go in this order:
-    //   null -> filesystem -> resource
-    // However, a route in the filesystem and resource phases
-    // can set check: true.  If it does, then it jumps to the rewrite phase
-    //   rewrite -> filesystem -> resource
-
-    while(true) {
-      const phaseResult = await this.doPhaseRoutes(phase, routeMatcherContext);
-      phaseResults.push(phaseResult);
-
-      mergeHeaders(phase, phaseResult.headers);
-      if (phaseResult.status != null) {
-        status = phaseResult.status;
-      }
-
-      if (phaseResult.middlewareResponse != null) {
-        // is middleware response
-        return {
-          phaseResults,
-          status,
-          headers,
-          requestHeaders: routeMatcherContext.headers,
-          syntheticResponse: phaseResult.middlewareResponse,
-          type: 'synthetic',
-        };
-      }
-
-      if (phaseResult.isDestUrl) {
-        // is destination URL, we will proxy and be done with it
-        return {
-          phaseResults,
-          status,
-          headers,
-          requestHeaders: routeMatcherContext.headers,
-          dest: phaseResult.dest,
-          type: 'proxy',
-        };
-      }
-
-      // See if we are supposed to do a "check".
-      // "check" restarts this loop at the rewrite phase.
-      if (phase != null && phaseResult.isCheck) {
-        // null phase cannot have check
-        phase = 'rewrite';
-        continue;
-      }
-
-      // NOTE: Need research - what to do if check and location are both set?
-
-      // Handle this if it's a redirect
-      const redirectResult = this.handleRedirectResult(
-        phaseResults,
-        phaseResult
-      );
-      if (redirectResult != null) {
-        return redirectResult;
-      }
-
-      // match the file to filesystem
-      // this can be a static file OR a function
-      let matched = await this.checkFilesystem(phaseResult.dest);
-
-      // If this was not a match in the filesystem, then
-      // handle the status code too
-      if (!matched) {
-        const statusResult = this.handleStatusResult(
-          phaseResults,
-          phaseResult,
-          headers,
-        );
-        if (statusResult != null) {
-          return statusResult;
-        }
-      }
-
-      // check match
-      if (matched) {
-
-        if (this._routesCollection.getPhaseRoutes('hit').length > 0) {
-          const hitResult = await this.doPhaseRoutes('hit', routeMatcherContext);
-          phaseResults.push(hitResult);
-
-          if (hitResult.matchedRoute != null) {
-            // items will all have "continue": true so there will be no matched route.
-            // items here cannot set status or a destination path
-            throw new Error("hit phase routes must have continue");
-          }
-
-          mergeHeaders('hit', hitResult.headers);
-        }
-
-        // serve it and end
-        return {
-          phaseResults,
-          status,
-          headers,
-          requestHeaders: routeMatcherContext.headers,
-          dest: phaseResult.dest,
-          type: 'filesystem',
-        };
-
-      } else {
-
-        if (this._routesCollection.getPhaseRoutes('miss').length > 0) {
-
-          const missResult = await this.doPhaseRoutes('miss', routeMatcherContext);
-          phaseResults.push(missResult);
-
-          mergeHeaders('miss', missResult.headers);
-          if (missResult.status != null) {
-            status = missResult.status;
-          }
-
-          // Handle this if it's a redirect
-          const redirectResult = this.handleRedirectResult(
-            phaseResults,
-            missResult
-          );
-          if (redirectResult != null) {
-            return redirectResult;
-          }
-
-          if (missResult.matchedRoute != null) {
-            // if matches, then it has a dest and check
-            if (
-              missResult.matchedRoute.dest != null &&
-              missResult.matchedRoute.check
-            ) {
-              // "check" restarts this loop at the rewrite phase.
-              phase = 'rewrite';
-              continue;
-            }
-
-            throw "unexpected";
-          }
-
-        }
-
-      }
-
-      switch (phase) {
-        case null:
-        case 'rewrite': {
-          if (this._routesCollection.getPhaseRoutes('filesystem').length > 0) {
-            phase = 'filesystem';
-            continue;
-          }
-          // fall through
-        }
-        case 'filesystem': {
-          if (this._routesCollection.getPhaseRoutes('resource').length > 0) {
-            phase = 'resource';
-            continue;
-          }
-        }
-      }
-
-      break;
-    }
-
-    // If we are here, then it means we have had no match
-    if (this._routesCollection.getPhaseRoutes('error').length > 0) {
-      const errorResult = await this.doPhaseRoutes('error', routeMatcherContext);
-      phaseResults.push(errorResult);
-
-      // error phase seems to be strange --
-      // it seems I should ignore check here but still merge headers and status
-      // probably also makes no sense to do hit or miss phases here
-
-      mergeHeaders(phase, errorResult.headers);
-      if (errorResult.status != null) {
-        status = errorResult.status;
-      }
-
-      // NOTE: Still need to find out, if this is destination URL, we will still proxy?
-      // If not, we should remove this.
-      if (errorResult.isDestUrl) {
-        return {
-          phaseResults,
-          status,
-          headers,
-          requestHeaders: routeMatcherContext.headers,
-          dest: errorResult.dest,
-          type: 'proxy',
-        };
-      }
-
-      // Handle this if it's a redirect
-      const redirectResult = this.handleRedirectResult(
-        phaseResults,
-        errorResult
-      );
-      if (redirectResult != null) {
-        return redirectResult;
-      }
-
-      // match the file to filesystem
-      // this can be a static file OR a function
-      let matched = await this.checkFilesystem(errorResult.dest);
-
-      // If this was not a match in the filesystem, then
-      // handle the status code too
-      if (!matched) {
-        const statusResult = this.handleStatusResult(
-          phaseResults,
-          errorResult,
-          headers,
-        );
-        if (statusResult != null) {
-          return statusResult;
-        }
-      }
-
-      // NOTE: need to find out if this is the right behavior:
-      // We do no hit or miss, and then just end (?)
-      if (matched) {
-        return {
-          phaseResults,
-          status,
-          headers,
-          requestHeaders: routeMatcherContext.headers,
-          dest: errorResult.dest,
-          type: 'filesystem',
-        };
-      }
-    }
-
-    return {
-      phaseResults,
-      headers,
-      status: 500,
-      errorCode: '',
-      type: 'error',
-    };
-  }
-
-  async doPhaseRoutes(phase: HandleValue | null, routeMatcherContext: RouteMatcherContext): Promise<PhaseRoutesResult> {
-
-    const matchedEntries: RouteMatchResult[] = [];
-    let matchedRoute: RouteWithSrc | undefined = undefined;
-
-    const phaseResult: PhaseResult = {
-      phase,
-      dest: routeMatcherContext.pathname,
-      isDestUrl: false,
-      isCheck: false,
-    };
+  async doRouterPhase(phase: PhaseName, routeMatcherContext: RouteMatcherContext): Promise<RouterPhaseResult> {
 
     const phaseRoutes = this._routesCollection.getPhaseRoutes(phase);
+
+    const matchStatus = phase === 'error';
+    const canAddResponseHeaders = phase !== 'hit' && phase !== 'miss';
+
+    let matchedRoute: RouteWithSrc | null = null;
+    let matchedRouteIndex: number | null = null;
 
     for (const [routeIndex, route] of phaseRoutes.entries()) {
 
       if (isHandler(route)) {
-        // We don't expect any Handle, only Source routes
+        // We don't really expect these, but just in case
         continue;
       }
 
-      const routeMatchResult = await matchRoute(
-        phase,
-        routeIndex,
-        route,
-        routeMatcherContext,
-        (path, ctx) => this.doMiddlewareFunction(path, ctx),
-      );
-
-      if(!routeMatchResult) {
+      const testRouteResult = testRoute(route, routeMatcherContext, matchStatus);
+      if (!testRouteResult) {
         continue;
       }
 
-      matchedEntries.push(routeMatchResult);
+      let isContinue: boolean | undefined;
+      let status: number | undefined = undefined;
+      let requestHeaders: HttpHeaders | undefined = undefined;
+      let responseHeaders: Record<string, string> | undefined = undefined;
+      let dest: string | undefined = undefined;
+      let syntheticResponse: Response | undefined = undefined;
+      let isCheck: boolean;
 
-      // Apply results from this route
-      applyRouteResults(routeMatchResult, phaseResult, routeMatcherContext);
+      if (route.middlewarePath != null) {
+        if (phase != null) {
+          throw new Error('Unexpected! middleware should only be when phase == null');
+        }
 
-      if (
-        routeMatchResult.middlewareResponse != null ||
-        routeMatchResult.isDestUrl ||
-        !routeMatchResult.isContinue
-      ) {
-        // if this is a "dest url" or "continue" is false, then
-        // we are exiting as a match
+        if (route.dest != null || route.status != null || route.headers != null) {
+          throw new Error('Unexpected! middleware route should not have dest, status, or headers');
+        }
+
+        const response = await this.doMiddlewareFunction(route.middlewarePath, routeMatcherContext);
+
+        status = response.status;
+        if (response.dest != null) {
+          dest = response.dest;
+        }
+
+        if (response.headers) {
+          for (const [key, value] of Object.entries(response.headers)) {
+            if (responseHeaders == null) {
+              responseHeaders = {};
+            }
+            responseHeaders[key.toLowerCase()] = value;
+          }
+        }
+
+        requestHeaders = response.requestHeaders;
+        isContinue = response.isContinue;
+
+        if (response.response != null) {
+          syntheticResponse = response.response;
+        }
+
+      } else {
+
+        // Only do string replacements for non-middleware paths
+        if (route.dest != null) {
+          if (phase == 'hit') {
+            throw new Error(`Unexpected! 'hit' phase cannot have a route with 'dest'.`);
+          }
+          dest = resolveRouteParameters(route.dest, testRouteResult.match, testRouteResult.keys);
+        }
+
+        if (route.headers != null) {
+          for (const [key, value] of Object.entries(route.headers)) {
+            if (responseHeaders == null) {
+              responseHeaders = {};
+            }
+            responseHeaders[key.toLowerCase()] = resolveRouteParameters(value, testRouteResult.match, testRouteResult.keys);
+          }
+        }
+
+        if (route.status != null) {
+          if (phase == 'hit') {
+            throw new Error(`Unexpected! 'hit' phase cannot have a route with 'status'.`);
+          }
+          if (phase !== 'error') {
+            status = route.status;
+          }
+        }
+
+        isContinue = route.continue ?? false;
+        if (phase == 'hit') {
+          if (!isContinue) {
+            throw new Error(`Unexpected! 'hit' phase cannot have a route without 'continue'.`);
+          }
+        }
+      }
+
+      isCheck = route.check ?? false;
+      if (phase == 'hit') {
+        if (isCheck) {
+          throw new Error(`Unexpected! 'hit' phase cannot have a route with 'check'.`);
+        }
+      }
+
+      // Merge request headers
+      if (requestHeaders != null) {
+        for (const [key, value] of Object.entries(requestHeaders)) {
+          routeMatcherContext.setRequestHeader(key.toLowerCase(), value);
+        }
+      }
+
+      // Apply status
+      if (status != null) {
+        routeMatcherContext.setStatus(status);
+      }
+
+      // Merge response headers
+      if (responseHeaders != null) {
+        for (const [key, value] of Object.entries(responseHeaders)) {
+          routeMatcherContext.setResponseHeader(key.toLowerCase(), value, canAddResponseHeaders);
+        }
+      }
+
+      // Apply dest
+      if (dest != null) {
+        routeMatcherContext.setDest(dest);
+      }
+
+      // Handle synthetic result
+      if (syntheticResponse != null) {
+        return {
+          type: 'synthetic',
+          phase,
+          matchedRoute: route,
+          routeIndex,
+          response: syntheticResponse,
+        };
+      }
+
+      // Handle proxy result
+      if (isURL(dest)) {
+        return {
+          type: 'proxy',
+          phase,
+          matchedRoute: route,
+          routeIndex,
+          dest,
+        };
+      }
+
+      // Handle redirect
+      if (status != null && status >= 300 && status < 400) {
+
+        const location = responseHeaders?.['location'] ?? dest;
+        if (location !== '') {
+          return {
+            type: 'redirect',
+            phase,
+            matchedRoute: route,
+            routeIndex,
+            dest: location,
+            status,
+          };
+        }
+
+      }
+
+      // Handle continue
+      if (!isContinue) {
         matchedRoute = route;
+        matchedRouteIndex = routeIndex;
         break;
       }
+    }
 
-      // "continue" doesn't count as a match
+    if (matchedRoute != null) {
+      return {
+        type: 'dest',
+        phase,
+        matchedRoute,
+        routeIndex: matchedRouteIndex!,
+        dest: routeMatcherContext.pathname,
+      };
     }
 
     return {
-      ...phaseResult,
-      matchedEntries,
-      matchedRoute,
+      type: 'miss',
+      phase,
+      matchedRoute: undefined,
+      routeIndex: undefined,
+    };
+
+  }
+
+  async applyRouterPhaseResult(routerPhaseResult: RouterPhaseResult, routeMatcherContext: RouteMatcherContext): Promise<ApplyRouteResult> {
+
+    const { phase } = routerPhaseResult;
+
+    // 'filesystem' is a special phase, and we don't apply 'dest',
+    // because we need to give 'rewrite' a chance to modify the 'dest' again
+    // before looking in the filesystem for the dest.
+    const doDest = phase !== 'filesystem';
+
+    // 'error' is a phase where we can't apply 'check'
+    const doCheck = phase !== 'error';
+
+    if (
+      !ALLOWED_ROUTER_PHASE_RESULTS[routerPhaseResult.type].includes(phase)
+    ) {
+      throw new Error(`Unexpected! Router phase result type '${routerPhaseResult.type}' cannot be handled in phase '${phase}'.`)
+    }
+
+    this._logger?.debug('applyRouterPhaseResult', routerPhaseResult);
+
+    if (
+      routerPhaseResult.type === 'synthetic' ||
+      routerPhaseResult.type === 'redirect' ||
+      routerPhaseResult.type === 'proxy' ||
+      routerPhaseResult.type === 'error'
+    ) {
+      try {
+        const response = await this.serveRouterResult(routerPhaseResult, routeMatcherContext);
+        return {
+          type: 'applied',
+          response,
+        };
+      } catch {
+        return {
+          type: 'error',
+          status: 500,
+        };
+      }
+    }
+
+    if (doDest && routerPhaseResult.type === 'dest') {
+
+      if (routerPhaseResult.dest == null) {
+        throw new Error(`Unexpected! dest is null while handling router phase result type 'dest'.`);
+      }
+
+      let matched = await this.checkFilesystem(routerPhaseResult.dest);
+      if (matched) {
+
+        const hitResult = await this.doRouterPhase('hit', routeMatcherContext);
+        if (hitResult.type !== 'miss') {
+          // items will all have "continue": true so there will be no matched route.
+          // items here cannot set status or a destination path
+          throw new Error("hit phase routes must have continue");
+        }
+
+        // above would also have applied `headers`
+        try {
+          const response = await this.serveRouterResult(routerPhaseResult, routeMatcherContext);
+          return {
+            type: 'applied',
+            response,
+          };
+        } catch {
+          return {
+            type: 'error',
+            status: 500,
+          };
+        }
+
+      }
+
+      if (doCheck) {
+
+        const filesystemRoutesResult = await this.doRouterPhase('filesystem', routeMatcherContext);
+        this._logger?.debug('filesystem routes - filesystemRoutesResult', JSON.stringify(filesystemRoutesResult, null, 2));
+        if (filesystemRoutesResult.type !== 'miss') {
+
+          const applyRouteResult = await this.applyRouterPhaseResult(routerPhaseResult, routeMatcherContext);
+          this._logger?.debug('filesystem routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+          // Because this is the 'filesystem' phase, it would be 'skipped' if the route has just a dest
+          if (applyRouteResult.type !== 'skipped') {
+            return applyRouteResult;
+          }
+
+        } else {
+
+          const missRoutesResult = await this.doRouterPhase('miss', routeMatcherContext);
+          this._logger?.debug('filesystem miss routes - missRoutesResult', JSON.stringify(missRoutesResult, null, 2));
+          if (missRoutesResult.type !== 'miss') {
+
+            const applyRouteResult = await this.applyRouterPhaseResult(routerPhaseResult, routeMatcherContext);
+            this._logger?.debug('filesystem miss routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+            if (applyRouteResult.type !== 'skipped') {
+              return applyRouteResult;
+            }
+          }
+
+        }
+
+        const rewriteRoutesResult = await this.doRouterPhase('filesystem', routeMatcherContext);
+        this._logger?.debug('rewrite routes - rewriteRoutesResult', JSON.stringify(rewriteRoutesResult, null, 2));
+        if (rewriteRoutesResult.type !== 'miss') {
+
+          const applyRouteResult = await this.applyRouterPhaseResult(routerPhaseResult, routeMatcherContext);
+          this._logger?.debug('rewrite routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+          if (applyRouteResult.type !== 'skipped') {
+            return applyRouteResult;
+          }
+
+        }
+
+      } else {
+
+        // If we're not doing a check, then we will do just a miss phase.
+        const missRoutesResult = await this.doRouterPhase('miss', routeMatcherContext);
+        this._logger?.debug('miss routes - missRoutesResult', JSON.stringify(missRoutesResult, null, 2));
+        if (missRoutesResult.type !== 'miss') {
+
+          const applyRouteResult = await this.applyRouterPhaseResult(routerPhaseResult, routeMatcherContext);
+          this._logger?.debug('miss routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+          if (applyRouteResult.type !== 'skipped') {
+            return applyRouteResult;
+          }
+        }
+
+      }
+
+    }
+
+    return {
+      type: 'skipped',
     };
   }
 }

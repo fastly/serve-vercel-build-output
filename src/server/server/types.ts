@@ -1,6 +1,3 @@
-import { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
-import { RouterResult } from "../types/routing.js";
-
 export type BackendDef = {
   url: string,
 };
@@ -22,12 +19,6 @@ export type RequestContext = {
   // A "context" object that contains a "waitUntil" binding to pass to
   // the edge function.
   edgeFunctionContext: EdgeFunctionContext,
-};
-
-export type ServeRequestContext = {
-  requestContext: RequestContext,
-  routeMatcherContext: RouteMatcherContext,
-  routeMatchResult?: RouterResult,
 };
 
 export type EdgeFunctionContext = {

@@ -1,6 +1,6 @@
 import { HandleValue, isHandler, normalizeRoutes, Route } from "@vercel/routing-utils";
 
-type PhaseName = HandleValue | null;
+import type { PhaseName } from "../types/routing";
 
 function getRoutesTypes(routes: Route[]) {
   const handleMap = new Map<PhaseName, Route[]>();
@@ -37,6 +37,13 @@ export default class RoutesCollection {
 
     this.routes = normalizedRoutes ?? [];
     this.handleMap = getRoutesTypes(this.routes);
+
+    // We add a "main" phase that simply redirects to itself and does a check
+    this.handleMap.set('main', [{
+      src: '/.*',
+      dest: '$0',
+      check: true,
+    }]);
   }
 
   getPhaseRoutes(phase: PhaseName) {

@@ -15,11 +15,11 @@ import RouteMatcher from "../../src/server/routing/RouteMatcher.js";
 import { createRouteMatcherContext } from "../../src/server/routing/RouteMatcherContext.js";
 import {
   HttpHeaders,
-  RouterResult,
-  RouterResultBase,
-  RouterResultDest,
-  RouterResultError,
-  RouterResultFilesystem
+  RouterResult__,
+  RouterResultBase__,
+  RouterResultDest__,
+  RouterResultError__,
+  RouterResultFilesystem__
 } from "../../src/server/types/routing.js";
 import { Holder } from "../../src/server/utils/misc.js";
 import { deepStrictEqualNullProto } from "./assert.js";
@@ -201,7 +201,7 @@ export function performChecks(routeMatcher: RouteMatcher, checksFile: ChecksFile
 
     describe(name, function() {
 
-      const routerResultHolder: Holder<RouterResult> = {};
+      const routerResultHolder: Holder<RouterResult__> = {};
 
       before(async function() {
         if (
@@ -219,11 +219,11 @@ export function performChecks(routeMatcher: RouteMatcher, checksFile: ChecksFile
 
       switch(check.result.type) {
       case 'filesystem': {
-        assertFilesystemResult(routerResultHolder as Holder<RouterResultFilesystem>, check.result);
+        assertFilesystemResult(routerResultHolder as Holder<RouterResultFilesystem__>, check.result);
         break;
       }
       case 'error': {
-        assertErrorResult(routerResultHolder as Holder<RouterResultError>, check.result);
+        assertErrorResult(routerResultHolder as Holder<RouterResultError__>, check.result);
         break;
       }
       }
@@ -234,38 +234,38 @@ export function performChecks(routeMatcher: RouteMatcher, checksFile: ChecksFile
 
 }
 
-function assertFilesystemResult(routerResultHolder: Holder<RouterResultFilesystem>, result: CheckResultFilesystem) {
+function assertFilesystemResult(routerResultHolder: Holder<RouterResultFilesystem__>, result: CheckResultFilesystem) {
   assertRouterResultType(routerResultHolder, result);
   assertRouterResultStatus(routerResultHolder, result);
   assertRouterResultDest(routerResultHolder, result);
   assertRouterResultHeaders(routerResultHolder, result);
 }
 
-function assertErrorResult(routerResultHolder: Holder<RouterResultError>, result: CheckResultError) {
+function assertErrorResult(routerResultHolder: Holder<RouterResultError__>, result: CheckResultError) {
   assertRouterResultType(routerResultHolder, result);
   assertRouterResultStatus(routerResultHolder, result);
   assertRouterResultHeaders(routerResultHolder, result);
 }
 
-function assertRouterResultType(routerResultHolder: Holder<RouterResult>, result: CheckResult) {
+function assertRouterResultType(routerResultHolder: Holder<RouterResult__>, result: CheckResult) {
   it(`type ${result.type}`, function() {
     assert.strictEqual(routerResultHolder.item?.type, result.type);
   });
 }
 
-function assertRouterResultStatus(routerResultHolder: Holder<RouterResultBase>, result: CheckResultBase) {
+function assertRouterResultStatus(routerResultHolder: Holder<RouterResultBase__>, result: CheckResultBase) {
   it(`status ${result.status}`, function() {
     assert.strictEqual(routerResultHolder.item?.status, result.status);
   });
 }
 
-function assertRouterResultDest(routerResultHolder: Holder<RouterResultDest>, result: CheckResultDest) {
+function assertRouterResultDest(routerResultHolder: Holder<RouterResultDest__>, result: CheckResultDest) {
   it(`dest ${result.dest}`, function() {
     assert.strictEqual(routerResultHolder.item?.dest, result.dest);
   });
 }
 
-function assertRouterResultHeaders(routerResultHolder: Holder<RouterResultBase>, result: CheckResultBase) {
+function assertRouterResultHeaders(routerResultHolder: Holder<RouterResultBase__>, result: CheckResultBase) {
   it(`headers`, function() {
     deepStrictEqualNullProto(routerResultHolder.item?.headers, result.headers);
   });

@@ -1,79 +1,95 @@
 import cookie from 'cookie';
+import {
+  HttpCookies,
+  HttpHeaders,
+  QueryParams,
+  RouteMatcherContext,
+} from "../types/routing.js";
 import { formatQueryString, headersToObject, parseQueryString } from "../utils/query.js";
-import { HttpCookies, HttpHeaders, Query } from "../types/routing.js";
 import { arrayToReadableStream, readableStreamToArray } from "../utils/stream.js";
 import { isURL } from "../utils/routing.js";
 import { normalizeUrlLocalhost } from "../utils/request.js";
 
-export interface RouteMatcherContext {
-
-  // The method of the request, in uppercase
-  get method(): string;
-
-  // The host header of the request
-  get host(): string;
-
-  // The pathname of the request, including the initial slash
-  get pathname(): string;
-
-  // The query part of the request, as an object.
-  // Each key maps to an array of string values.
-  get query(): Query;
-
-  // Headers of the request, as key-value pairs.
-  // Multiple values in a single header is listed as a single string, as comma-separated values.
-  get headers(): HttpHeaders;
-
-  // Cookies of the request, as key-value pairs.
-  get cookies(): HttpCookies;
-
-  dest: string;
-
-  // Body of the request, if not GET or HEAD
-  body: Promise<Uint8Array> | null;
-
-}
+const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 class RouteMatcherContextFromRequest implements RouteMatcherContext {
 
   private readonly _method: string;
+  private _host: string;
+  private _pathname: string;
+  private _query: QueryParams;
+  private readonly _requestHeaders: HttpHeaders;
+  private readonly _requestCookies: HttpCookies;
+  private readonly _requestBody: ReadableStream<Uint8Array> | null;
+  private _bodyPromise: Promise<Uint8Array> | undefined;
+
+  private _responseStatus: number | undefined;
+  private readonly _responseHeaders: HttpHeaders;
+
+  private _initialPathname: string;
+  private _initialQuery: QueryParams;
+
+  constructor(
+    request: Request
+  ) {
+    this._method = request.method;
+    this._requestHeaders = headersToObject(request.headers);
+
+    const url = new URL(normalizeUrlLocalhost(request.url));
+    this._pathname = url.pathname;
+    this._query = parseQueryString(url.search);
+    this._host = url.host;
+
+    if (this._requestHeaders['cookie']) {
+      this._requestCookies = cookie.parse(this._requestHeaders['cookie']);
+    } else {
+      this._requestCookies = Object.create(null);
+    }
+
+    this._requestBody = null;
+    if (this._method !== 'HEAD' && this._method !== 'GET') {
+      this._requestBody = request.body;
+    }
+    this._bodyPromise = undefined;
+
+    this._responseStatus = undefined;
+    this._responseHeaders = Object.create(null);
+
+    this._initialPathname = this._pathname;
+    this._initialQuery = Object.assign(
+      Object.create(null),
+      this._query
+    );
+  }
 
   get method() {
     return this._method;
   }
 
-  private _host: string;
-
   get host() {
     return this._host;
   }
-
-  private _pathname: string;
 
   get pathname() {
     return this._pathname;
   }
 
-  private _query: Query;
-
   get query() {
     return this._query;
   }
 
-  private readonly _headers: HttpHeaders;
-
   get headers() {
-    return this._headers;
+    return this._requestHeaders;
   }
 
-  private readonly _cookies: HttpCookies;
+  setRequestHeader(key: string, value: string) {
+    this._requestHeaders[key] = value;
+  }
 
   get cookies() {
-    return this._cookies;
+    return this._requestCookies;
   }
 
-  private readonly _requestBody: ReadableStream<Uint8Array> | null;
-  private _bodyPromise: Promise<Uint8Array> | undefined;
   get body(): Promise<Uint8Array> | null {
     if (this._requestBody == null) {
       return null;
@@ -84,31 +100,26 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
     return this._bodyPromise;
   }
 
-  constructor(
-    request: Request
-  ) {
-    this._method = request.method;
-    this._headers = headersToObject(request.headers);
-
-    const url = new URL(normalizeUrlLocalhost(request.url));
-    this._pathname = url.pathname;
-    this._query = parseQueryString(url.search);
-    this._host = url.host;
-
-    if (this._headers['cookie']) {
-      this._cookies = cookie.parse(this._headers['cookie']);
-    } else {
-      this._cookies = Object.create(null);
-    }
-
-    this._requestBody = null;
-    if (this._method !== 'HEAD' && this._method !== 'GET') {
-      this._requestBody = request.body;
-    }
-    this._bodyPromise = undefined;
+  get status() {
+    return this._responseStatus;
   }
 
-  set dest(value: string) {
+  setStatus(value: number) {
+    this._responseStatus = value;
+  }
+
+  get responseHeaders() {
+    return this._responseHeaders;
+  }
+
+  setResponseHeader(key: string, value: string, replace: boolean) {
+    if (!replace && hasOwnProperty.call(this._responseHeaders, key)) {
+      return;
+    }
+    this._responseHeaders[key] = value;
+  }
+
+  setDest(value: string) {
     let destUrl: URL;
 
     if (isURL(value)) {
@@ -132,10 +143,13 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
     this._host = destUrl.host;
   }
 
-  get dest(): string {
-    return this.pathname;
+  reset() {
+    this._pathname = this._initialPathname;
+    this._query = Object.assign(
+      Object.create(null),
+      this._initialQuery
+    );
   }
-
 }
 
 

@@ -1,128 +1,144 @@
-import type { HandleValue, Route, RouteWithSrc } from "@vercel/routing-utils";
-import type { RouteMatcherContext } from "../routing/RouteMatcherContext.js";
-import type { PromiseOrValue } from "../utils/misc.js";
+import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
+import type { PromiseOrValue } from "../utils/misc";
+
+// Types related to routing
+
+// Entire set of HTTP headers, as a JavaScript object.
+// Each key maps to its value. Multiple values in a single header is listed
+// // as a single string, as comma-separated values.
+// e.g.: "Content-Type: application/json" and "Accept-Encoding: br, gzip"
+// would be encoded as
+// {
+//   'Content-Type': 'application/json',
+//   'Accept-Encoding': 'br, gzip'
+// }
+// Note this also includes Cookies.
 
 export type HttpHeaders = Record<string, string>;
+
+// Entire set of HTTP Cookies, as a JavaScript object.
+// Each key maps to its value.
+// e.g.: "cookie_name1=cookie_value1; cookie_name2=cookie_value2"
+// would be encoded as
+// {
+//   cookie_name1: 'cookie_value1',
+//   cookie_name2: 'cookie_value2',
+// }
 export type HttpCookies = Record<string, string>;
 
-export type ValuesAndReplacements = {
-  // Original value that contains replacement tokens
-  originalValue: string;
-  // Final values with replacements applied
-  finalValue: string;
-  // The replacement values
-  replacementTokens?: Record<string, string>;
+// Entire set of query parameters, as a JavaScript object.
+// Each key maps to an array of all values.
+// e.g.: foo=bar&foo=baz&hi=ho
+// would be represented as
+// {
+//   foo: [ 'bar', 'baz' ],
+//   hi: 'ho',
+// }
+export type QueryParams = Record<string, string[]>;
+
+// Route Matching Context object holds:
+// * request `method`, `pathname`, (request) `headers`, `query`, `cookie`, `body`
+// * result `status` and (response) `headers`.
+// `dest` can be written to, and will update `pathname` and `query` accordingly.
+export interface RouteMatcherContext {
+
+  // The method of the request, in uppercase
+  readonly method: string;
+
+  // The host header of the request
+  readonly host: string;
+
+  // The pathname of the request, including the initial slash
+  readonly pathname: string;
+
+  // The query part of the request
+  readonly query: QueryParams;
+
+  // HTTP Headers of the request
+  readonly headers: HttpHeaders;
+
+  // Set header on request
+  // Currently only done in special cases, such as by Middleware
+  setRequestHeader(key: string, value: string): void;
+
+  // Cookies of the request, as key-value pairs.
+  readonly cookies: HttpCookies;
+
+  // Body of the request, if not GET or HEAD
+  readonly body: Promise<Uint8Array> | null;
+
+  // Status code of the response
+  readonly status: number | undefined;
+
+  // Set status code of response
+  setStatus(value: number): void;
+
+  // Response HTTP headers
+  readonly responseHeaders: HttpHeaders;
+
+  // Set header on response
+  // Unless 'replace' is true, this will not overwrite existing header keys
+  setResponseHeader(key: string, value: string, replace: boolean): void;
+
+  // Set `pathname` and merge `query`
+  setDest(value: string): void;
+
+  // Reset `pathname` and `query`
+  reset(): void;
+}
+
+export type PhaseName = HandleValue | 'main' | null;
+
+// Result of finding a match in a router phase
+// Usually returned by doRouterPhase
+export type RouterPhaseResult = {
+  // The phase that the route matching was performed in
+  phase: PhaseName,
+
+  // The route that was matched
+  matchedRoute: RouteWithSrc | undefined,
+
+  // The integer index of the route matched in the group
+  routeIndex: number | undefined,
+
+  // Type of router result
+  type: 'redirect' | 'proxy' | 'dest' | 'synthetic' | 'error' | 'miss',
+
+  // Effective status value of the route, if any
+  status?: number,
+
+  // Response headers of the route, if any
+  headers?: HttpHeaders,
+
+  // Effective dest value of the route
+  dest?: string,
+
+  // Effective check value of the route
+  isCheck?: boolean,
+
+  // Effective response, if it should be returned
+  response?: Response,
 };
 
-export type Query = Record<string, string[]>;
-
-export type RouteMatchResult = {
-  // The phase where the route was matched.
-  phase: HandleValue | null;
-
-  // The pathname string that was tested.
-  src: string;
-
-  // object of the route spec that matched
-  route: Route;
-
-  // integer of the index of the route matched in the group
-  routeIndex: number;
-
-  // boolean denoting whether this had a "continue" flag on it
-  isContinue: boolean;
-
-  // integer in case exit code is intended to be changed
-  status?: number;
-
-  // object of the headers values
-  headers?: Record<string, ValuesAndReplacements>;
-
-  // request headers that are added before next route.
-  // currently added only by middleware,
-  // these are set using x-middleware-request headers and
-  // declared using x-middleware-override-headers
-  requestHeaders?: HttpHeaders;
-
-  // the dest value of the route
-  dest?: ValuesAndReplacements;
-
-  // The middleware name, if one was run
-  middlewarePath?: string;
-
-  // The middleware response, if it should be returned
-  middlewareResponse?: Response;
-
-  // boolean denoting whether we are done routing
-  isDestUrl: boolean;
-
-  // boolean denoting whether this route would cause a check
-  isCheck: boolean;
+export type ApplyRouteResultApplied = {
+  type: 'applied',
+  response: Response,
 };
 
-export type PhaseResult = {
-  phase: HandleValue | null;
-
-  status?: number;
-
-  requestHeaders?: HttpHeaders;
-
-  headers?: HttpHeaders;
-
-  dest: string;
-
-  // The middleware response, if it should be returned
-  middlewareResponse?: Response;
-
-  // boolean denoting whether we are done routing
-  isDestUrl: boolean;
-
-  // boolean denoting whether this route would cause a check
-  isCheck: boolean;
+export type ApplyRouteResultError = {
+  type: 'error',
+  status?: number,
+  errorCode?: string,
 };
 
-export type PhaseRoutesResult = PhaseResult & {
-  matchedEntries: RouteMatchResult[];
-  matchedRoute?: RouteWithSrc;
-}
-
-export type RouterResultBase = {
-  phaseResults: PhaseRoutesResult[];
-  status?: number;
-  headers: HttpHeaders;
-}
-
-export type RouterResultRequestHeaders = {
-  requestHeaders: HttpHeaders;
-}
-
-export type RouterResultDest = {
-  dest: string;
-}
-
-export type RouterResultFilesystem = RouterResultBase & RouterResultDest & RouterResultRequestHeaders & {
-  type: 'filesystem';
-}
-
-export type RouterResultProxy = RouterResultBase & RouterResultDest & RouterResultRequestHeaders & {
-  type: 'proxy';
-}
-
-export type RouterResultRedirect = RouterResultBase & RouterResultDest & {
-  type: 'redirect';
-}
-
-export type RouterResultSynthetic = RouterResultBase & RouterResultRequestHeaders & {
-  type: 'synthetic';
-  syntheticResponse: Response;
+export type ApplyRouteResultSkipped = {
+  type: 'skipped',
 };
 
-export type RouterResultError = RouterResultBase & {
-  errorCode: string;
-  type: 'error';
-};
-
-export type RouterResult = RouterResultFilesystem | RouterResultProxy | RouterResultRedirect | RouterResultSynthetic | RouterResultError;
+export type ApplyRouteResult =
+  | ApplyRouteResultApplied
+  | ApplyRouteResultError
+  | ApplyRouteResultSkipped;
 
 export type MiddlewareHandler =
   (middlewarePath: string, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<MiddlewareResponse>;
@@ -140,3 +156,9 @@ export type MiddlewareResponse = {
 
   response?: Response;
 };
+
+export type ServeRouterResultHandler =
+  (routerResult: RouterPhaseResult, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<Response>;
+
+export type ServeRouterErrorHandler =
+  (status: number, errorCode: string | null, headers: HttpHeaders) => PromiseOrValue<Response>;
