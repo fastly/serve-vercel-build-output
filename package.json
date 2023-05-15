@@ -15,7 +15,7 @@
     "build-node:compile": "tsc --build tsconfig.node.json",
     "build-node:copy-package-json": "cp src/node/package.json dist/node/package.json",
     "test": "npm run test-server",
-    "test-server": "#c8 mocha -n no-warnings=86652 -n loader=ts-node/esm --extension ts --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
+    "test-server": "c8 mocha -n no-warnings=86652 -n loader=ts-node/esm --extension ts --require test/mocha_bootstrap.js test/testHelpers.ts test/**/*.test.ts"
   },
   "bin": {
     "transform": "./dist/node/cli/transform.js"
