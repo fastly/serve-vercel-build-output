@@ -36,6 +36,12 @@ export type HttpCookies = Record<string, string>;
 // }
 export type QueryParams = Record<string, string[]>;
 
+// Data to temporarily save the state, so that we can restore it later
+export type RouteMatcherContextState = {
+  pathname: string;
+  query: QueryParams;
+};
+
 // Route Matching Context object holds:
 // * request `method`, `pathname`, (request) `headers`, `query`, `cookie`, `body`
 // * result `status` and (response) `headers`.
@@ -83,8 +89,11 @@ export interface RouteMatcherContext {
   // Set `pathname` and merge `query`
   setDest(value: string): void;
 
+  // Save the current state so that it can be restored later
+  getState(): RouteMatcherContextState;
+
   // Reset `pathname` and `query`
-  reset(): void;
+  restoreState(state: RouteMatcherContextState): void;
 }
 
 export type PhaseName = HandleValue | 'main' | null;
@@ -102,7 +111,7 @@ export type RouterPhaseResult = {
   routeIndex: number | undefined,
 
   // Type of router result
-  type: 'redirect' | 'proxy' | 'dest' | 'synthetic' | 'error' | 'miss',
+  type: 'redirect' | 'proxy' | 'dest' | 'synthetic' | 'error',
 
   // Effective status value of the route, if any
   status?: number,

@@ -3,7 +3,7 @@ import {
   HttpCookies,
   HttpHeaders,
   QueryParams,
-  RouteMatcherContext,
+  RouteMatcherContext, RouteMatcherContextState,
 } from "../types/routing.js";
 import { formatQueryString, headersToObject, parseQueryString } from "../utils/query.js";
 import { arrayToReadableStream, readableStreamToArray } from "../utils/stream.js";
@@ -26,16 +26,13 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
   private _responseStatus: number | undefined;
   private readonly _responseHeaders: HttpHeaders;
 
-  private _initialPathname: string;
-  private _initialQuery: QueryParams;
-
   constructor(
     request: Request
   ) {
     this._method = request.method;
     this._requestHeaders = headersToObject(request.headers);
 
-    const url = new URL(normalizeUrlLocalhost(request.url));
+    const url = new URL(normalizeUrlLocalhost(decodeURI(request.url)));
     this._pathname = url.pathname;
     this._query = parseQueryString(url.search);
     this._host = url.host;
@@ -54,12 +51,6 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
 
     this._responseStatus = undefined;
     this._responseHeaders = Object.create(null);
-
-    this._initialPathname = this._pathname;
-    this._initialQuery = Object.assign(
-      Object.create(null),
-      this._query
-    );
   }
 
   get method() {
@@ -134,8 +125,9 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
 
     // Merge in the query params
     const destQuery = parseQueryString(destUrl.search);
+
     //TODO: Really? req overwrites?
-    const combinedQuery = Object.assign({}, destQuery, this.query);
+    const combinedQuery = Object.assign({}, destQuery, this._query);
     destUrl.search = formatQueryString(combinedQuery) ?? '';
 
     this._pathname = destUrl.pathname;
@@ -143,11 +135,21 @@ class RouteMatcherContextFromRequest implements RouteMatcherContext {
     this._host = destUrl.host;
   }
 
-  reset() {
-    this._pathname = this._initialPathname;
+  getState() {
+    return {
+      pathname: this._pathname,
+      query: Object.assign(
+        Object.create(null),
+        this._query,
+      ),
+    };
+  }
+
+  restoreState(state: RouteMatcherContextState) {
+    this._pathname = state.pathname;
     this._query = Object.assign(
       Object.create(null),
-      this._initialQuery
+      state.query,
     );
   }
 }
