@@ -24,10 +24,13 @@ export default class FunctionsStep {
   async doStep(
     requestContext: RequestContext,
     routeMatcherContext: RouteMatcherContext,
-    pathname: string,
+    overrideDest?: string,
   ) {
 
-    const request = routeMatcherContextToRequest(routeMatcherContext);
+    const request = routeMatcherContextToRequest(
+      routeMatcherContext,
+      overrideDest,
+    );
     const { client, edgeFunctionContext } = requestContext;
 
     // TODO: figure out how to handle the response headers relating to caching
@@ -36,7 +39,7 @@ export default class FunctionsStep {
       request,
       client,
       edgeFunctionContext,
-      pathname,
+      routeMatcherContext.pathname,
       this._vercelBuildOutputServer.serverConfig.execLayerFunctionBackend,
     );
   }

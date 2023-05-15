@@ -169,8 +169,14 @@ export function requestToRouteMatcherContext(request: Request): RouteMatcherCont
   return createRouteMatcherContext(request);
 }
 
-export function routeMatcherContextToRequest(routeMatcherContext: RouteMatcherContext): Request {
-  const url = routeMatcherContextToUrl(routeMatcherContext);
+export function routeMatcherContextToRequest(
+  routeMatcherContext: RouteMatcherContext,
+  overrideDest?: string,
+): Request {
+  const url = routeMatcherContextToUrl(
+    routeMatcherContext,
+    overrideDest,
+  );
 
   const requestInit: RequestInit = {
     method: routeMatcherContext.method,
@@ -198,10 +204,13 @@ export function routeMatcherContextBaseUrl(routeMatcherContext: RouteMatcherCont
   return proto + '://' + routeMatcherContext.host;
 }
 
-export function routeMatcherContextToUrl(routeMatcherContext: RouteMatcherContext) {
+export function routeMatcherContextToUrl(
+  routeMatcherContext: RouteMatcherContext,
+  overrideDest?: string,
+) {
 
   const url = new URL(
-    routeMatcherContext.pathname,
+    overrideDest ?? routeMatcherContext.pathname,
     routeMatcherContextBaseUrl(routeMatcherContext)
   );
   url.search = formatQueryString(routeMatcherContext.query) ?? '';

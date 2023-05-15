@@ -31,6 +31,7 @@ export default class EdgeNetworkCacheStep {
   async doStep(
     requestContext: RequestContext,
     routeMatcherContext: RouteMatcherContext,
+    overrideDest?: string,
   ) {
 
     const { pathname } = routeMatcherContext;
@@ -57,6 +58,6 @@ export default class EdgeNetworkCacheStep {
       throw new Error('Unknown asset type ' + pathname);
     }
 
-    return await this._functionsStep.doStep(requestContext, routeMatcherContext, pathname);
+    return await this._functionsStep.doStep(requestContext, routeMatcherContext, overrideDest);
   }
 }

@@ -168,6 +168,9 @@ export default class RouteMatcher {
     const matchStatus = phase === 'error';
     const canAddResponseHeaders = phase !== 'hit' && phase !== 'miss';
 
+    // Make a copy of the pathname for rewrite
+    const originalDest = routeMatcherContext.pathname;
+
     let matchedRoute: RouteWithSrc | null = null;
     let matchedRouteIndex: number | null = null;
 
@@ -364,6 +367,7 @@ export default class RouteMatcher {
       matchedRoute: matchedRoute ?? undefined,
       routeIndex: matchedRouteIndex ?? undefined,
       dest: routeMatcherContext.pathname,
+      originalDest: phase === 'rewrite' ? originalDest : undefined,
     };
   }
 

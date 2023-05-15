@@ -127,6 +127,9 @@ export type RouterPhaseResult = {
 
   // Effective response, if it should be returned
   response?: Response,
+
+  // For 'rewrite' phase, return a copy of dest from before the phase
+  originalDest?: string,
 };
 
 export type ApplyRouteResultApplied = {

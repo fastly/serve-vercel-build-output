@@ -108,6 +108,7 @@ export default class EdgeMiddlewareStep {
       response = await this._edgeNetworkCacheStep.doStep(
         requestContext,
         routeMatcherContext,
+        routerResult.originalDest,
       );
     } else if (routerResult.type === 'synthetic') {
       if (routerResult.response == null) {
