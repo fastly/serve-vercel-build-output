@@ -35,10 +35,7 @@ export default class EdgeNetworkCacheStep {
   ) {
 
     const { pathname } = routeMatcherContext;
-    this._logger.debug('Serving from filesystem');
-    this._logger.debug({
-      pathname,
-    });
+    this._logger.debug('Serving from filesystem', { pathname });
 
     const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(pathname);
 

@@ -27,6 +27,7 @@ export type EdgeMiddlewareStepInit = {
 export default class EdgeMiddlewareStep {
   private _vercelBuildOutputServer: VercelBuildOutputServer;
   private _routesCollection: RoutesCollection;
+  private _wildcardMap: Record<string, string>;
   private _edgeNetworkCacheStep: EdgeNetworkCacheStep;
   private _logger: ILogger;
 
@@ -43,6 +44,11 @@ export default class EdgeMiddlewareStep {
     const routes = config.routes ?? [];
     this._routesCollection = new RoutesCollection(routes);
     RouteSrcMatcher.init(this._routesCollection.routes);
+
+    this._wildcardMap = {};
+    for (const wildcardEntry of config.wildcard ?? []) {
+      this._wildcardMap[wildcardEntry.domain] = wildcardEntry.value;
+    }
 
     this._edgeNetworkCacheStep = new EdgeNetworkCacheStep({
       vercelBuildOutputServer,
@@ -63,6 +69,7 @@ export default class EdgeMiddlewareStep {
 
     const routeMatcher = new RouteMatcher(
       this._routesCollection,
+      this._wildcardMap,
     );
     routeMatcher.onCheckFilesystem =
       pathname => this.onCheckFilesystem(pathname);

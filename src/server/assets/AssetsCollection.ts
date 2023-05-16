@@ -121,10 +121,21 @@ export default class AssetsCollection {
 
   getAsset(key: string) {
     let assetKey = key;
-    if (assetKey !== '/' && assetKey.startsWith('/')) {
+    if (
+      assetKey !== '/' &&
+      assetKey.startsWith('/')
+    ) {
       assetKey = assetKey.slice(1);
     }
-    return this.assets[assetKey];
+    let asset = this.assets[assetKey];
+    if (
+      asset == null &&
+      assetKey.endsWith('/')
+    ) {
+      assetKey = assetKey.slice(0, -1);
+      asset = this.assets[assetKey];
+    }
+    return asset;
   }
 
 }

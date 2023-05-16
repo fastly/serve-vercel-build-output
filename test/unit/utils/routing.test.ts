@@ -54,7 +54,16 @@ describe('utils/routing', function() {
         assert.ok(result2);
 
         const { keys, match } = result2;
-        const resolved = resolveRouteParameters(route.dest!, match, keys);
+
+        const replacementTokens: Record<string, string> = {};
+        for (const [index, key] of keys.entries()) {
+          replacementTokens[`$${key}`] = match[index+1] ?? '';
+        }
+        for (const [index, value] of match.entries()) {
+          replacementTokens[`$${index}`] = value;
+        }
+
+        const resolved = resolveRouteParameters(route.dest!, replacementTokens);
         assert.strictEqual(resolved, '/fr/routing/dynamic/catchall/[...args]?args=foo');
       });
 

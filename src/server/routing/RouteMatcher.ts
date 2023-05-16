@@ -31,7 +31,8 @@ const ALLOWED_ROUTER_PHASE_RESULTS: Record<RouterPhaseResult['type'], PhaseName[
 
 export default class RouteMatcher {
 
-  _routesCollection: RoutesCollection;
+  private _routesCollection: RoutesCollection;
+  private _wildcardMap: Record<string, string>;
 
   _logger: ILogger;
 
@@ -45,8 +46,10 @@ export default class RouteMatcher {
 
   constructor(
     routesCollection: RoutesCollection,
+    wildcardMap: Record<string, string>,
   ) {
     this._routesCollection = routesCollection;
+    this._wildcardMap = wildcardMap;
     this._logger = getLogger(this.constructor.name);
   }
 
@@ -168,6 +171,8 @@ export default class RouteMatcher {
     const matchStatus = phase === 'error';
     const canAddResponseHeaders = phase !== 'hit' && phase !== 'miss';
 
+    const wildcardValue = this._wildcardMap[routeMatcherContext.host];
+
     // Make a copy of the pathname for rewrite
     const originalDest = routeMatcherContext.pathname;
 
@@ -236,12 +241,22 @@ export default class RouteMatcher {
 
       } else {
 
+        // Prepare string replacement tokens, including wildcard
+        const replacementTokens: Record<string, string> = {};
+        for (const [index, key] of testRouteResult.keys.entries()) {
+          replacementTokens[`$${key}`] = testRouteResult.match[index+1] ?? '';
+        }
+        for (const [index, value] of testRouteResult.match.entries()) {
+          replacementTokens[`$${index}`] = value;
+        }
+        replacementTokens[`$wildcard`] = wildcardValue;
+
         // Only do string replacements for non-middleware paths
         if (route.dest != null) {
           if (phase == 'hit') {
             throw new Error(`Unexpected! 'hit' phase cannot have a route with 'dest'.`);
           }
-          dest = resolveRouteParameters(route.dest, testRouteResult.match, testRouteResult.keys);
+          dest = resolveRouteParameters(route.dest, replacementTokens);
         }
 
         if (route.headers != null) {
@@ -249,7 +264,7 @@ export default class RouteMatcher {
             if (responseHeaders == null) {
               responseHeaders = {};
             }
-            responseHeaders[key.toLowerCase()] = resolveRouteParameters(value, testRouteResult.match, testRouteResult.keys);
+            responseHeaders[key.toLowerCase()] = resolveRouteParameters(value, replacementTokens);
           }
         }
 

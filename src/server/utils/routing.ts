@@ -115,39 +115,13 @@ export function isURL(str: any): boolean {
 
 export function resolveRouteParameters(
   str: string,
-  match: string[],
-  keys: string[]
+  tokens: Record<string, string>,
 ): string {
-  const finalValue = str.replace(/\$([0-9a-zA-Z]+)/g, (_, param) => {
-    let matchIndex: number = keys.indexOf(param);
-    if (matchIndex === -1) {
-      // It's a number match, not a named capture
-      matchIndex = parseInt(param, 10);
-    } else {
-      // For named captures, add one to the `keys` index to
-      // match up with the RegExp group matches
-      matchIndex++;
-    }
-    return match[matchIndex] || '';
-  });
-
-  const replacementTokens: Record<string, string> = {};
-  for (const [index, key] of keys.entries()) {
-    replacementTokens[`$${key}`] = match[index+1] ?? '';
-  }
-  for (const [index, value] of match.entries()) {
-    if (index === 0) {
-      // don't allow 0
-      continue;
-    }
-    replacementTokens[`$${index}`] = value;
-  }
-
-  console.log('Performed replacement:', {
-    originalValue: str,
-    finalValue,
-    replacementTokens
-  });
+  const finalValue = str.replace(
+    /(\$[0-9a-zA-Z]+)/g,
+    (_: string, param: string) => tokens[param] ?? ''
+  );
+  console.log(`Performed replacement: "${str}" => "${finalValue}"`, tokens);
 
   return finalValue;
 }
