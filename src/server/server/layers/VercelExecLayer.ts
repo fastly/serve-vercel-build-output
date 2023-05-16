@@ -39,7 +39,7 @@ export default class VercelExecLayer {
       // not found (or wasn't a edge function)
       // TODO: should probably find a way to return an error.
 
-      this._logger?.warn('Function ' + functionPathname + ' not found (or not edge function)');
+      this._logger.warn('Function ' + functionPathname + ' not found (or not edge function)');
       throw new Error('Function ' + functionPathname + ' not found (or not edge function)');
     }
 

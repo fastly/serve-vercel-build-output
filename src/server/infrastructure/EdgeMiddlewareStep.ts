@@ -28,7 +28,7 @@ export default class EdgeMiddlewareStep {
   private _vercelBuildOutputServer: VercelBuildOutputServer;
   private _routesCollection: RoutesCollection;
   private _edgeNetworkCacheStep: EdgeNetworkCacheStep;
-  private _logger?: ILogger;
+  private _logger: ILogger;
 
   constructor(
     init: EdgeMiddlewareStepInit,
@@ -57,7 +57,7 @@ export default class EdgeMiddlewareStep {
 
     const { request } = requestContext;
 
-    this._logger?.debug('requestContext', {
+    this._logger.debug('requestContext', {
       requestContext
     });
 
@@ -73,9 +73,9 @@ export default class EdgeMiddlewareStep {
     routeMatcher.onServeRouterError = (status, errorCode, headers) =>
       this.serveRouterError(requestContext, status, errorCode, headers)
 
-    this._logger?.info('calling router');
+    this._logger.info('calling router');
     const response = await routeMatcher.doRouter(request);
-    this._logger?.info('returned from router');
+    this._logger.info('returned from router');
 
     return response;
   }
@@ -168,8 +168,8 @@ export default class EdgeMiddlewareStep {
   private serveSyntheticResult(
     response: Response
   ) {
-    this._logger?.debug('Serving synthetic response');
-    this._logger?.debug({
+    this._logger.debug('Serving synthetic response');
+    this._logger.debug({
       status: response.status,
       headers: headersToObject(response.headers),
     });
@@ -184,7 +184,7 @@ export default class EdgeMiddlewareStep {
     requestHeaders: HttpHeaders,
     body: Promise<Uint8Array> | null,
   ) {
-    this._logger?.debug('Serving proxy response');
+    this._logger.debug('Serving proxy response');
 
     const requestInit: RequestInit = {};
 
@@ -226,7 +226,7 @@ export default class EdgeMiddlewareStep {
       const backendInfo = getBackendInfo(this._vercelBuildOutputServer.serverConfig.backends, destUrl);
 
       if (backendInfo == null) {
-        this._logger?.warn('Proxying to ' + destUrl + ' may fail as it does not match a defined backend.');
+        this._logger.warn('Proxying to ' + destUrl + ' may fail as it does not match a defined backend.');
       } else {
         requestInit.backend = backendInfo.name;
 
@@ -238,8 +238,8 @@ export default class EdgeMiddlewareStep {
 
     requestInit.headers = new Headers(headers);
 
-    this._logger?.debug('Making proxy request to', destUrl);
-    this._logger?.debug({
+    this._logger.debug('Making proxy request to', destUrl);
+    this._logger.debug({
       backend: requestInit.backend,
       headers,
     });
@@ -265,7 +265,7 @@ export default class EdgeMiddlewareStep {
     location: string,
     statusCode: number = 302,
   ) {
-    this._logger?.debug(`Serving redirect ${statusCode}: ${location}`);
+    this._logger.debug(`Serving redirect ${statusCode}: ${location}`);
 
     const headers: HttpHeaders = { location };
 
@@ -361,15 +361,15 @@ export default class EdgeMiddlewareStep {
   }
 
   private serveUnknownResultType() {
-    this._logger?.debug('Error response');
+    this._logger.debug('Error response');
 
     return new Response('error', { 'headers': { 'content-type': 'text/plain' }});
   }
 
   onCheckFilesystem(pathname: string) {
-    this._logger?.debug('onCheckFilesystem', {pathname});
+    this._logger.debug('onCheckFilesystem', {pathname});
     const result = this._vercelBuildOutputServer.assetsCollection.getAsset(pathname) != null;
-    this._logger?.debug({result});
+    this._logger.debug({result});
     return result;
   }
 
@@ -383,22 +383,22 @@ export default class EdgeMiddlewareStep {
       // not found (or wasn't a edge function)
       // TODO: should probably find a way to return an error.
 
-      this._logger?.warn('Middleware ' + middlewarePath + ' not found (or not edge function), performing no-op');
+      this._logger.warn('Middleware ' + middlewarePath + ' not found (or not edge function), performing no-op');
 
       return {
         isContinue: true,
       };
     }
 
-    this._logger?.debug({routeMatcherContext});
+    this._logger.debug({routeMatcherContext});
     const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
-    this._logger?.debug({middlewareRequest});
+    this._logger.debug({middlewareRequest});
 
     // Middleware always runs on every request, so we bypass the cache
     middlewareRequest.setCacheOverride(new CacheOverride("pass"));
 
     const { request, client, edgeFunctionContext } = requestContext;
-    this._logger?.debug('requestContext', request.url);
+    this._logger.debug('requestContext', request.url);
 
     const middlewareResponse =
       await this._vercelBuildOutputServer.vercelExecLayer.execFunction(
@@ -408,13 +408,13 @@ export default class EdgeMiddlewareStep {
         middlewarePath,
         this._vercelBuildOutputServer.serverConfig.execLayerMiddlewareBackend,
       );
-    this._logger?.debug({middlewareResponse});
+    this._logger.debug({middlewareResponse});
 
     // Process response (including response headers, response body)
     const baseUrl = normalizeUrlLocalhost(request.url);
-    this._logger?.debug({baseUrl});
+    this._logger.debug({baseUrl});
     const result = processMiddlewareResponse(middlewareResponse, baseUrl);
-    this._logger?.debug({result});
+    this._logger.debug({result});
     return result;
   }
 }

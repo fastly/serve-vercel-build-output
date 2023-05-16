@@ -35,8 +35,8 @@ export default class EdgeNetworkCacheStep {
   ) {
 
     const { pathname } = routeMatcherContext;
-    this._logger?.debug('Serving from filesystem');
-    this._logger?.debug({
+    this._logger.debug('Serving from filesystem');
+    this._logger.debug({
       pathname,
     });
 

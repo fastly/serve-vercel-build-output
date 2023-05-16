@@ -33,7 +33,7 @@ export default class RouteMatcher {
 
   _routesCollection: RoutesCollection;
 
-  _logger?: ILogger;
+  _logger: ILogger;
 
   onCheckFilesystem?: CheckFilesystemHandler;
 
@@ -100,7 +100,7 @@ export default class RouteMatcher {
     // Save the initial state and then restore it at the start of each loop
     const initialState = routeMatcherContext.getState();
 
-    this._logger?.debug('routeMatcherContext', {
+    this._logger.debug('routeMatcherContext', {
       method: routeMatcherContext.method,
       host: routeMatcherContext.host,
       pathname: routeMatcherContext.pathname,
@@ -121,10 +121,10 @@ export default class RouteMatcher {
       routeMatcherContext.restoreState(initialState);
 
       const routerPhaseResult = await this.doRouterPhase(phase, routeMatcherContext);
-      this._logger?.debug('routerPhaseResult', JSON.stringify(routerPhaseResult, null, 2));
+      this._logger.debug('routerPhaseResult', JSON.stringify(routerPhaseResult, null, 2));
 
       const applyRouteResult = await this.applyRouterPhaseResult(routerPhaseResult, routeMatcherContext);
-      this._logger?.debug('applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+      this._logger.debug('applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
       if (applyRouteResult.type === 'applied') {
         return applyRouteResult.response;
       }
@@ -181,7 +181,7 @@ export default class RouteMatcher {
         continue;
       }
 
-      this._logger?.debug({
+      this._logger.debug({
         route,
         status: routeMatcherContext.status,
         pathname: routeMatcherContext.pathname,
@@ -389,8 +389,8 @@ export default class RouteMatcher {
       throw new Error(`Unexpected! Router phase result type '${routerPhaseResult.type}' cannot be handled in phase '${phase}'.`)
     }
 
-    this._logger?.debug('applyRouterPhaseResult routerPhaseResult', routerPhaseResult);
-    this._logger?.debug('applyRouterPhaseResult routeMatcherContext', routeMatcherContext);
+    this._logger.debug('applyRouterPhaseResult routerPhaseResult', routerPhaseResult);
+    this._logger.debug('applyRouterPhaseResult routeMatcherContext', routeMatcherContext);
 
     if (
       routerPhaseResult.type === 'synthetic' ||
@@ -447,11 +447,11 @@ export default class RouteMatcher {
       if (doCheck) {
 
         const filesystemRoutesResult = await this.doRouterPhase('filesystem', routeMatcherContext);
-        this._logger?.debug('filesystem routes - filesystemRoutesResult', JSON.stringify(filesystemRoutesResult, null, 2));
+        this._logger.debug('filesystem routes - filesystemRoutesResult', JSON.stringify(filesystemRoutesResult, null, 2));
         if (filesystemRoutesResult.matchedRoute != null) {
 
           const applyRouteResult = await this.applyRouterPhaseResult(filesystemRoutesResult, routeMatcherContext);
-          this._logger?.debug('filesystem routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+          this._logger.debug('filesystem routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
           // Because this is the 'filesystem' phase, it would be 'skipped' if the route has just a dest
           if (applyRouteResult.type !== 'skipped') {
             return applyRouteResult;
@@ -463,11 +463,11 @@ export default class RouteMatcher {
           try {
 
             const missRoutesResult = await this.doRouterPhase('miss', routeMatcherContext);
-            this._logger?.debug('filesystem miss routes - missRoutesResult', JSON.stringify(missRoutesResult, null, 2));
+            this._logger.debug('filesystem miss routes - missRoutesResult', JSON.stringify(missRoutesResult, null, 2));
             if (missRoutesResult.matchedRoute != null) {
 
               const applyRouteResult = await this.applyRouterPhaseResult(missRoutesResult, routeMatcherContext);
-              this._logger?.debug('filesystem miss routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+              this._logger.debug('filesystem miss routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
               if (applyRouteResult.type !== 'skipped') {
                 return applyRouteResult;
               }
@@ -481,11 +481,11 @@ export default class RouteMatcher {
         }
 
         const rewriteRoutesResult = await this.doRouterPhase('rewrite', routeMatcherContext);
-        this._logger?.debug('rewrite routes - rewriteRoutesResult', JSON.stringify(rewriteRoutesResult, null, 2));
+        this._logger.debug('rewrite routes - rewriteRoutesResult', JSON.stringify(rewriteRoutesResult, null, 2));
         if (rewriteRoutesResult.matchedRoute != null) {
 
           const applyRouteResult = await this.applyRouterPhaseResult(rewriteRoutesResult, routeMatcherContext);
-          this._logger?.debug('rewrite routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+          this._logger.debug('rewrite routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
           if (applyRouteResult.type !== 'skipped') {
             return applyRouteResult;
           }
@@ -499,11 +499,11 @@ export default class RouteMatcher {
 
           // If we're not doing a check, then we will do just a miss phase.
           const missRoutesResult = await this.doRouterPhase('miss', routeMatcherContext);
-          this._logger?.debug('miss routes - missRoutesResult', JSON.stringify(missRoutesResult, null, 2));
+          this._logger.debug('miss routes - missRoutesResult', JSON.stringify(missRoutesResult, null, 2));
           if (missRoutesResult.matchedRoute != null) {
 
             const applyRouteResult = await this.applyRouterPhaseResult(missRoutesResult, routeMatcherContext);
-            this._logger?.debug('miss routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
+            this._logger.debug('miss routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
             if (applyRouteResult.type !== 'skipped') {
               return applyRouteResult;
             }
