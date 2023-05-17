@@ -311,48 +311,126 @@ export default class RouteMatcher {
         }
       }
 
-      // Apply dest
-      if (dest != null) {
-        routeMatcherContext.setDest(dest);
-      }
+      // NOTE: in Next.js, locale redirects always occur on their own.
+      // For now, we'll treat it as undefined behavior if
+      // they're combined with other actions like headers, status, dest, etc.
 
-      // Handle synthetic result
-      if (syntheticResponse != null) {
-        return {
-          type: 'synthetic',
-          phase,
-          matchedRoute: route,
-          routeIndex,
-          response: syntheticResponse,
-        };
-      }
+      // Handle locale redirect
+      if (route.locale != null) {
 
-      // Handle proxy result
-      if (isURL(dest)) {
-        return {
-          type: 'proxy',
-          phase,
-          matchedRoute: route,
-          routeIndex,
-          dest,
-        };
-      }
+        if (route.locale?.redirect != null) {
+          let localeRedirect: string | null = null;
 
-      // Handle redirect
-      if (status != null && status >= 300 && status < 400) {
+          // Vercel's implementation of locale seems pretty rudimentary at this point.
+          // * does not consider the language-region syntax, only exact matches
+          // * checks locale names in a case-insensitive way
 
-        const location = responseHeaders?.['location'] ?? dest;
-        if (location !== '') {
+          // 1. if a cookie name is specified, then we check that cookie.
+          let cookieValue: string | null = null;
+
+          const cookieName = (route.locale.cookie ?? '').trim().toLowerCase();
+          if (cookieName !== '') {
+            // Cookie names are usually case-sensitive, but we emulate Vercel's behavior here
+            // and find a matching cookie in a case-insensitive way
+            for (const [key, value] of Object.entries(routeMatcherContext.cookies)) {
+              if (key.toLowerCase() === cookieName) {
+                cookieValue = value;
+                break;
+              }
+            }
+          }
+          if (cookieValue != null) {
+            for (const [key, value] of Object.entries(route.locale.redirect)) {
+              if (key.toLowerCase() === cookieValue) {
+                localeRedirect = value;
+                break;
+              }
+            }
+          }
+
+          if (localeRedirect == null) {
+            // 2. we use Accept-Language header from request.
+            // * Vercel's behavior seems to not consider the language-region syntax, only exact matches
+            // * checks only the first segment, even if more than one is listed
+            // * even if the first one doesn't match any of the known locales
+            // * ignores q= weights
+            const acceptLanguage = (routeMatcherContext.headers['accept-language'] ?? '')
+              .split(',')[0] // Take the first one only
+              .split(';')[0] // Take only the part before a semicolon
+              .trim()
+              .toLowerCase();
+
+            if (acceptLanguage !== '') {
+              for (const [key, value] of Object.entries(route.locale.redirect)) {
+                if (key.toLowerCase() === acceptLanguage) {
+                  localeRedirect = value;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (localeRedirect != null) {
+            // Only do this if the redirect takes us to another src,
+            // to avoid infinite looping.
+            if (localeRedirect !== routeMatcherContext.pathname) {
+              return {
+                type: 'redirect',
+                phase,
+                matchedRoute: route,
+                routeIndex,
+                dest: localeRedirect,
+                status: 307,
+              };
+            }
+          }
+
+        }
+
+      } else {
+
+        // Apply dest
+        if (dest != null) {
+          routeMatcherContext.setDest(dest);
+        }
+
+        // Handle synthetic result
+        if (syntheticResponse != null) {
           return {
-            type: 'redirect',
+            type: 'synthetic',
             phase,
             matchedRoute: route,
             routeIndex,
-            dest: location,
-            status,
+            response: syntheticResponse,
           };
         }
 
+        // Handle proxy result
+        if (isURL(dest)) {
+          return {
+            type: 'proxy',
+            phase,
+            matchedRoute: route,
+            routeIndex,
+            dest,
+          };
+        }
+
+        // Handle status redirect
+        if (status != null && status >= 300 && status < 400) {
+
+          const location = responseHeaders?.['location'] ?? dest;
+          if (location !== '') {
+            return {
+              type: 'redirect',
+              phase,
+              matchedRoute: route,
+              routeIndex,
+              dest: location,
+              status,
+            };
+          }
+        }
       }
 
       // Handle continue
