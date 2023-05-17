@@ -51,6 +51,8 @@ export default class VercelExecLayer {
       }
     }
 
+    request.headers.set('x-matched-path', functionPathname);
+
     if (backend != null) {
       // TODO: Also handle dynamic backends
       prepareExecLayerRequest(request, functionPathname);
