@@ -1,9 +1,7 @@
-import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
+import { RouteWithSrc } from "@vercel/routing-utils";
 import RouteSrcMatcher from "../routing/RouteSrcMatcher.js";
 import {
-  HttpHeaders,
   RouteMatcherContext,
-  MiddlewareHandler,
 } from "../types/routing.js";
 
 type HasFieldEntry = NonNullable<RouteWithSrc['has']>[number];
