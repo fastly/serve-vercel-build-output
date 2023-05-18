@@ -40,23 +40,45 @@ export default class EdgeNetworkCacheStep {
     const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(pathname);
 
     if (asset instanceof StaticAsset) {
-      // Static items are always "cached"
-      // They are served from KV (if enabled) or from inline (at the edge)
-      const storeEntry = await asset.contentAsset.getStoreEntry();
-      return new Response(storeEntry.body, {
-        status: 200,
-        headers: {
-          'Content-Type': asset.contentType,
-        },
-      });
+      return await this.serveStaticAsset(
+        asset,
+      );
     }
     if (asset instanceof FunctionAsset) {
-      return await this._functionsStep.doStep(requestContext, routeMatcherContext, overrideDest);
+      return await this.serveFunctionAsset(
+        asset,
+        requestContext,
+        routeMatcherContext,
+        overrideDest,
+      );
     }
 
     if (asset == null) {
       throw new Error(`Unknown asset: ${pathname}`);
     }
     throw new Error('Unknown asset type ' + pathname);
+  }
+
+  async serveStaticAsset(
+    asset: StaticAsset,
+  ) {
+    // Static items are always "cached"
+    // They are served from KV (if enabled) or from inline (at the edge)
+    const storeEntry = await asset.contentAsset.getStoreEntry();
+    return new Response(storeEntry.body, {
+      status: 200,
+      headers: {
+        'Content-Type': asset.contentType,
+      },
+    });
+  }
+
+  async serveFunctionAsset(
+    asset: FunctionAsset,
+    requestContext: RequestContext,
+    routeMatcherContext: RouteMatcherContext,
+    overrideDest?: string,
+  ) {
+    return await this._functionsStep.doStep(requestContext, routeMatcherContext, overrideDest);
   }
 }
