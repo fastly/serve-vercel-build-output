@@ -1,6 +1,6 @@
 import { HandleValue, isHandler, normalizeRoutes, Route } from "@vercel/routing-utils";
 
-import type { PhaseName } from "../types/routing";
+import type { PhaseName } from "../types/routing.js";
 
 function getRoutesTypes(routes: Route[]) {
   const handleMap = new Map<PhaseName, Route[]>();

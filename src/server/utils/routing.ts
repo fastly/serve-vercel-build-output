@@ -45,8 +45,6 @@ export function testRoute(
     return false;
   }
 
-  console.log({route, matchResult});
-
   return matchResult;
 
 }
@@ -115,13 +113,10 @@ export function resolveRouteParameters(
   str: string,
   tokens: Record<string, string>,
 ): string {
-  const finalValue = str.replace(
+  return str.replace(
     /(\$[0-9a-zA-Z]+)/g,
     (_: string, param: string) => tokens[param] ?? ''
   );
-  console.log(`Performed replacement: "${str}" => "${finalValue}"`, tokens);
-
-  return finalValue;
 }
 
 /**

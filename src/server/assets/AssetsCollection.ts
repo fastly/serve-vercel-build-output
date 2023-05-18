@@ -1,4 +1,6 @@
+import path from "path-browserify";
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
+
 import { PathOverride } from "../types/config.js";
 import AssetBase from "./AssetBase.js";
 import FunctionAsset, {
@@ -77,7 +79,7 @@ export default class AssetsCollection {
         const functionAsset = moduleAssets.getAsset(entrypoint);
         if (functionAsset == null) {
           // shouldn't happen
-          console.warn( 'Entry point ' + entrypoint + ' does not exist');
+          console.warn( `Entry point ${entrypoint} does not exist`);
           continue;
         }
 
@@ -87,21 +89,39 @@ export default class AssetsCollection {
         const prerenderConfigAsset = contentAssets.getAsset(prerenderConfigFilename);
         if (prerenderConfigAsset != null) {
           if (!prerenderConfigAsset.isLocal) {
-            console.warn('Prerender-config file ' + prerenderConfigFilename + ' must be locally available.');
+            console.warn(`Prerender-config file ${prerenderConfigFilename} must be locally available.`);
           } else {
             const prerenderConfigStr = prerenderConfigAsset.getText();
             prerenderConfig = JSON.parse(prerenderConfigStr) as PrerenderFunctionConfig;
 
-            if (typeof prerenderConfig.fallback !== 'string') {
-              prerenderConfig.fallback = undefined;
-              const fallback = prerenderConfig.fallback as any;
-              const type = fallback?.type as string;
+            const fallbackField = prerenderConfig.fallback as any;
+
+            let fallback: string | undefined = undefined;
+
+            if (typeof fallbackField === 'string') {
+              fallback = fallbackField;
+            } else {
+              const type = fallbackField?.type as string;
               if (type === 'FileFsRef') {
-                if (typeof fallback.fsPath === 'string') {
-                  prerenderConfig.fallback = fallback.fsPath;
+                if (typeof fallbackField.fsPath === 'string') {
+                  fallback = fallbackField.fsPath;
                 } else {
-                  console.warn('FileFsRef of ' + prerenderConfigFilename + ' does not have a string fsPath value, ignoring.');
+                  console.warn(`FileFsRef of ${prerenderConfigFilename} does not have a string fsPath value, ignoring.`);
                 }
+              }
+            }
+
+            if (fallback != null) {
+              const fallbackAssetKey = path.resolve(
+                path.dirname(prerenderConfigFilename),
+                fallback
+              );
+
+              const fallbackAsset = contentAssets.getAsset(fallbackAssetKey);
+              if (fallbackAsset == null) {
+                console.warn(`Fallback asset ${fallbackAssetKey} of ${prerenderConfigFilename} does not exist, ignoring.`);
+              } else {
+                prerenderConfig.fallback = fallbackAssetKey;
               }
             }
           }

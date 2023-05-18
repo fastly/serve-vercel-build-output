@@ -1,5 +1,5 @@
 import { HandleValue, RouteWithSrc } from "@vercel/routing-utils";
-import type { PromiseOrValue } from "../utils/misc";
+import type { PromiseOrValue } from "../utils/misc.js";
 
 // Types related to routing
 

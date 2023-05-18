@@ -15,6 +15,7 @@ export type RequestContext = {
   client: ClientInfo,
   request: Request,
   requestId: string,
+  serviceId: string,
 
   // A "context" object that contains a "waitUntil" binding to pass to
   // the edge function.

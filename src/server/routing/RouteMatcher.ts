@@ -497,7 +497,9 @@ export default class RouteMatcher {
           type: 'applied',
           response,
         };
-      } catch {
+      } catch(ex) {
+        this._logger.error('Error serving route', routerPhaseResult);
+        this._logger.debug(ex);
         return {
           type: 'error',
           status: 500,
@@ -528,7 +530,9 @@ export default class RouteMatcher {
             type: 'applied',
             response,
           };
-        } catch {
+        } catch(ex) {
+          this._logger.error('Error serving route', routerPhaseResult);
+          this._logger.debug(ex);
           return {
             type: 'error',
             status: 500,

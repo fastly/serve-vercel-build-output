@@ -221,12 +221,42 @@ time into the stream to save it.
 As far as I can tell, ISR does NOT save status/headers etc., just the body.
 The i18n routing takes care of language versions.
 
-
 The "group" can also be done by storing a KV with key:
 * Service id "FASTLY_SERVICE_ID"
 * Service version "FASTLY_SERVICE_VERSION"
 * group
 
-We need some way to make everything in the group will revalidate
+We need some way to make everything in the group will revalidate.
+When a "revalidate" happens, we write the "revalidate" time to
+a KV for the whole group
 
+x-vercel-cache: HIT MISS PRERENDER STALE REVALIDATED
 
+* Validation header exists and is valid?
+  * yes
+    * KV enabled?
+      * yes 
+        * write revalidate time to KV
+        * request updated item in background and save to cache
+    * return REVALIDATED
+
+* KV enabled?
+  * yes
+    * Item in KV cache? (check both the "current time" and "group revalidate time")
+      * yes
+        * serve the existing copy
+        * expired?
+          * no
+            * return HIT 
+          * yes
+            * request updated item in background and save to cache
+            * return STALE
+
+* Item has fallback?
+  * yes
+    * serve fallback copy
+    * request updated item in background and save to cache
+    * return PRERENDER
+
+* request and wait on updated item, and save to cache
+* return MISS

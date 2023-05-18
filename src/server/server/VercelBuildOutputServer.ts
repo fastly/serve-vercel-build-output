@@ -1,4 +1,5 @@
 import { env } from "fastly:env";
+
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
@@ -11,12 +12,14 @@ import { execLayerFunctionPathnameFromRequest, isExecLayerRequest } from "../uti
 
 export type ServerConfig = {
   backends: Backends | 'dynamic',
+  cachingKvStore?: string,
   execLayerMiddlewareBackend: string | undefined,
   execLayerFunctionBackend: string | undefined,
 };
 
 export type ServerConfigInit = {
   backends?: BackendsDefs,
+  cachingKvStore?: string,
   execLayerMiddlewareBackend?: string,
   execLayerFunctionBackend?: string,
 };
@@ -84,6 +87,7 @@ export default class VercelBuildOutputServer {
 
     this.serverConfig = {
       backends,
+      cachingKvStore: serverConfig?.cachingKvStore,
       execLayerMiddlewareBackend: serverConfig?.execLayerMiddlewareBackend,
       execLayerFunctionBackend: serverConfig?.execLayerFunctionBackend,
     };
@@ -126,7 +130,9 @@ export default class VercelBuildOutputServer {
         event.request,
         event.client,
         {
-          waitUntil: event.waitUntil.bind(event),
+          waitUntil(promise) {
+            return event.waitUntil(promise);
+          },
         },
       );
     };
@@ -153,10 +159,16 @@ export default class VercelBuildOutputServer {
     // Fastly: build requestId from POP ID
     const requestId = generateRequestId(env('FASTLY_POP') || 'local');
 
+    // Fastly: build and ID that represents the service and version
+    const serviceId = env('FASTLY_HOSTNAME') === 'localhost' ?
+      `${'0'.repeat(22)}-000` :
+      `${env('FASTLY_SERVICE_ID')}-${env('FASTLY_SERVICE_VERSION')}`;
+
     return await this._edgeMiddlewareStep.doStep({
       client,
       request,
       requestId,
+      serviceId,
       edgeFunctionContext,
     });
   }
