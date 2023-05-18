@@ -1,7 +1,10 @@
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 import { PathOverride } from "../types/config.js";
 import AssetBase from "./AssetBase.js";
-import FunctionAsset, { VercelFunctionConfig } from "./FunctionAsset.js";
+import FunctionAsset, {
+  PrerenderFunctionConfig,
+  VercelFunctionConfig,
+} from "./FunctionAsset.js";
 import StaticAsset from "./StaticAsset.js";
 
 function adjustIndexPathname(pathname: string) {
@@ -78,10 +81,42 @@ export default class AssetsCollection {
           continue;
         }
 
+        let prerenderConfig: PrerenderFunctionConfig | undefined;
+
+        const prerenderConfigFilename = `/functions/${functionName}.prerender-config.json`;
+        const prerenderConfigAsset = contentAssets.getAsset(prerenderConfigFilename);
+        if (prerenderConfigAsset != null) {
+          if (!prerenderConfigAsset.isLocal) {
+            console.warn('Prerender-config file ' + prerenderConfigFilename + ' must be locally available.');
+          } else {
+            const prerenderConfigStr = prerenderConfigAsset.getText();
+            prerenderConfig = JSON.parse(prerenderConfigStr) as PrerenderFunctionConfig;
+
+            if (typeof prerenderConfig.fallback !== 'string') {
+              prerenderConfig.fallback = undefined;
+              const fallback = prerenderConfig.fallback as any;
+              const type = fallback?.type as string;
+              if (type === 'FileFsRef') {
+                if (typeof fallback.fsPath === 'string') {
+                  prerenderConfig.fallback = fallback.fsPath;
+                } else {
+                  console.warn('FileFsRef of ' + prerenderConfigFilename + ' does not have a string fsPath value, ignoring.');
+                }
+              }
+            }
+          }
+        }
+
         const canonicalKey = key.slice(0, key.lastIndexOf('/.vc-config.json'));
 
         let assetKey = adjustIndexPathname(functionName);
-        this.assets[assetKey] = new FunctionAsset(assetKey, canonicalKey, functionAsset, vcConfig);
+        this.assets[assetKey] = new FunctionAsset(
+          assetKey,
+          canonicalKey,
+          functionAsset,
+          vcConfig,
+          prerenderConfig,
+        );
       }
 
     }

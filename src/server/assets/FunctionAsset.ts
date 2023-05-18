@@ -10,6 +10,15 @@ export type VercelFunctionConfig = {
   assets: { name: string; path: string }[],
 };
 
+export type PrerenderFunctionConfig = {
+  type?: "Prerender";
+  expiration: number | false;
+  group?: number;
+  bypassToken?: string;
+  fallback?: string;
+  allowQuery?: string[];
+};
+
 export default class FunctionAsset extends AssetBase {
   private readonly asset: ModuleAsset;
 
@@ -20,10 +29,18 @@ export default class FunctionAsset extends AssetBase {
   }
 
   vcConfig: VercelFunctionConfig;
+  prerenderConfig: PrerenderFunctionConfig | undefined;
 
-  constructor(key: string, canonicalKey: string, asset: ModuleAsset, vcConfig: VercelFunctionConfig) {
+  constructor(
+    key: string,
+    canonicalKey: string,
+    asset: ModuleAsset,
+    vcConfig: VercelFunctionConfig,
+    prerenderConfig: PrerenderFunctionConfig | undefined,
+  ) {
     super(key, canonicalKey);
     this.asset = asset;
     this.vcConfig = vcConfig;
+    this.prerenderConfig = prerenderConfig;
   }
 }

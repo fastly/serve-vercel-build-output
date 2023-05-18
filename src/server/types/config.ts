@@ -35,8 +35,6 @@ export interface Images {
   contentSecurityPolicy?: string;
 }
 
-
-
 interface WildcardEntry {
   domain: string;
   value: string;
