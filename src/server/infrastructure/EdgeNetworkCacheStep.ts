@@ -1,4 +1,4 @@
-import { ObjectStore } from "fastly:object-store";
+import { KVStore } from "fastly:kv-store";
 
 import { RequestContext } from "../server/types.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
@@ -86,9 +86,9 @@ export default class EdgeNetworkCacheStep {
 
     const now = Date.now();
 
-    let kvStore: ObjectStore | undefined = undefined;
+    let kvStore: KVStore | undefined = undefined;
     if (this._vercelBuildOutputServer.serverConfig.cachingKvStore != null) {
-      kvStore = new ObjectStore(
+      kvStore = new KVStore(
         this._vercelBuildOutputServer.serverConfig.cachingKvStore
       );
     }
@@ -275,7 +275,7 @@ export default class EdgeNetworkCacheStep {
   }
 
   async getCachedEntry(
-    kvStore: ObjectStore,
+    kvStore: KVStore,
     now: number,
     expiration: number | false,
     groupKey: string | undefined,
