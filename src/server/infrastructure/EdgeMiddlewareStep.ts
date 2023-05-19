@@ -258,12 +258,14 @@ export default class EdgeMiddlewareStep {
     headers: HttpHeaders,
     requestId: string,
   ): HttpHeaders {
+
+    const vercelCache = headers['x-vercel-cache'] ?? 'MISS';
     return {
       'cache-control': 'public, max-age=0, must-revalidate',
       ...headers,
       server: 'Vercel',
       'x-vercel-id': requestId,
-      'x-vercel-cache': 'MISS',
+      'x-vercel-cache': vercelCache,
     };
   }
 
