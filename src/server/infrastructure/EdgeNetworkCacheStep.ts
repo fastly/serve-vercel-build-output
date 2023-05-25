@@ -1,5 +1,6 @@
 import { KVStore } from "fastly:kv-store";
 
+import { PRERENDER_REVALIDATE_HEADER } from '../constants.js';
 import { RequestContext } from "../server/types.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import StaticAsset from "../assets/StaticAsset.js";
@@ -162,7 +163,7 @@ export default class EdgeNetworkCacheStep {
       // Only do revalidate mode if the header exists AND matches
       // the value for the function.
       const validationHeader =
-        requestContext.request.headers.get('x-prerender-revalidate');
+        requestContext.request.headers.get(PRERENDER_REVALIDATE_HEADER);
       if (
         validationHeader != null && (
           asset.prerenderConfig?.bypassToken == null ||

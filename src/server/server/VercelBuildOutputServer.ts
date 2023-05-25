@@ -1,6 +1,8 @@
 import { env } from "fastly:env";
 
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
+
+import { PRERENDER_REVALIDATE_HEADER } from "../constants.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
 import { Backends, BackendsDefs, EdgeFunctionContext } from "./types.js";
@@ -9,9 +11,11 @@ import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
 import { execLayerFunctionPathnameFromRequest, isExecLayerRequest } from "../utils/execLayer.js";
+import { onBeforeFetch } from "../utils/patchFetch.js";
 
 export type ServerConfig = {
   backends: Backends | 'dynamic',
+  selfInvokeBackend?: string,
   cachingKvStore?: string,
   execLayerMiddlewareBackend: string | undefined,
   execLayerFunctionBackend: string | undefined,
@@ -19,6 +23,7 @@ export type ServerConfig = {
 
 export type ServerConfigInit = {
   backends?: BackendsDefs,
+  selfInvokeBackend?: string,
   cachingKvStore?: string,
   execLayerMiddlewareBackend?: string,
   execLayerFunctionBackend?: string,
@@ -87,6 +92,7 @@ export default class VercelBuildOutputServer {
 
     this.serverConfig = {
       backends,
+      selfInvokeBackend: serverConfig?.selfInvokeBackend,
       cachingKvStore: serverConfig?.cachingKvStore,
       execLayerMiddlewareBackend: serverConfig?.execLayerMiddlewareBackend,
       execLayerFunctionBackend: serverConfig?.execLayerFunctionBackend,
@@ -104,7 +110,23 @@ export default class VercelBuildOutputServer {
     this._logger = getLogger(this.constructor.name);
   }
 
-  public async callInitModules() {
+  // @deprecated
+  public async initialize() {
+    if (this.serverConfig.backends !== 'dynamic') {
+      onBeforeFetch((fetch, input, init) => {
+        let newRequestInit = {
+          ...init
+        };
+        if (
+          (input instanceof Request && input.headers.has(PRERENDER_REVALIDATE_HEADER)) ||
+          new Headers(init?.headers).has(PRERENDER_REVALIDATE_HEADER)
+        ) {
+          newRequestInit.backend = this.serverConfig.selfInvokeBackend ?? 'self';
+        }
+        return fetch(input, newRequestInit);
+      });
+    }
+
     for (const assetKey of this.moduleAssets.getAssetKeys()) {
       if (assetKey.startsWith('/init/')) {
         const initModule = this.moduleAssets.getAsset(assetKey);
