@@ -1,3 +1,5 @@
+import type { PromiseOrValue } from "../utils/misc.js";
+
 export type BackendDef = {
   url: string,
 };
@@ -26,4 +28,4 @@ export type EdgeFunctionContext = {
   waitUntil: (promise: Promise<any>) => void,
 };
 
-export type EdgeFunction = (request: Request, context: EdgeFunctionContext) => Response;
+export type EdgeFunction = (request: Request, context: EdgeFunctionContext) => PromiseOrValue<Response>;
