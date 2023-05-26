@@ -12,6 +12,7 @@ import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
 import { execLayerFunctionPathnameFromRequest, isExecLayerRequest } from "../utils/execLayer.js";
 import { onBeforeFetch } from "../utils/patchFetch.js";
+import NextImageService from "../services/next-image.js";
 
 export type ServerConfig = {
   backends: Backends | 'dynamic',
@@ -70,6 +71,12 @@ export default class VercelBuildOutputServer {
       contentAssets,
       moduleAssets,
       config.overrides,
+    );
+
+    const nextImageService = new NextImageService(this);
+    this.assetsCollection.addFunctionAsset(
+      '_next/image',
+      nextImageService.serve.bind(nextImageService),
     );
 
     let backends: Backends | 'dynamic';
