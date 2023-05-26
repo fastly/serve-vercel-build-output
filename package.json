@@ -1,6 +1,6 @@
 {
   "name": "@fastly/serve-vercel-build-output",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Serve Vercel Build Output (v3) on Fastly Compute@Edge",
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
