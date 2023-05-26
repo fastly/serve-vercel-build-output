@@ -1,5 +1,5 @@
 import path from "path-browserify";
-import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
+import { ContentAssets, ModuleAsset, ModuleAssets } from "@fastly/compute-js-static-publish";
 
 import { PathOverride } from "../types/config.js";
 import AssetBase from "./AssetBase.js";
@@ -8,6 +8,8 @@ import FunctionAsset, {
   VercelFunctionConfig,
 } from "./FunctionAsset.js";
 import StaticAsset from "./StaticAsset.js";
+
+import type { EdgeFunction } from "../server/types.js";
 
 function adjustIndexPathname(pathname: string) {
   let adjustedPathname = pathname;
@@ -191,6 +193,42 @@ export default class AssetsCollection {
       asset = this.assets[assetKey];
     }
     return asset;
+  }
+
+  addFunctionAsset(
+    assetKey: string,
+    edgeFunction: EdgeFunction,
+  ) {
+    const module = {
+      'default': edgeFunction,
+    };
+    const modulePromise = Promise.resolve(module);
+
+    const functionAsset: ModuleAsset = {
+      assetKey,
+      isStaticImport: true,
+      getModule(): Promise<any> {
+        return modulePromise;
+      },
+      getStaticModule(): any {
+        return module;
+      },
+    };
+
+    this.assets[assetKey] = new FunctionAsset(
+      assetKey,
+      '',
+      functionAsset,
+      {
+        runtime: 'edge',
+        name: assetKey,
+        deploymentTarget: 'v8-worker',
+        entrypoint: '',
+        envVarsInUse: [],
+        assets: [],
+      },
+      undefined,
+    );
   }
 
 }
