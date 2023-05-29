@@ -1,6 +1,7 @@
+import { env } from "fastly:env";
 import { KVStore } from "fastly:kv-store";
 
-import { PRERENDER_REVALIDATE_HEADER } from '../constants.js';
+import { KV_STORE_ISR_LOCAL, PRERENDER_REVALIDATE_HEADER } from '../constants.js';
 import { RequestContext } from "../server/types.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import StaticAsset from "../assets/StaticAsset.js";
@@ -87,11 +88,13 @@ export default class EdgeNetworkCacheStep {
 
     const now = Date.now();
 
+    const kvStoreName = env('FASTLY_HOSTNAME') !== 'localhost' ?
+      this._vercelBuildOutputServer.serverConfig.cachingKvStore :
+      KV_STORE_ISR_LOCAL;
+
     let kvStore: KVStore | undefined = undefined;
-    if (this._vercelBuildOutputServer.serverConfig.cachingKvStore != null) {
-      kvStore = new KVStore(
-        this._vercelBuildOutputServer.serverConfig.cachingKvStore
-      );
+    if (kvStoreName != null) {
+      kvStore = new KVStore(kvStoreName);
     }
 
     const entryId =
