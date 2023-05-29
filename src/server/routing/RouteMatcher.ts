@@ -167,307 +167,316 @@ export default class RouteMatcher {
 
   async doRouterPhase(phase: PhaseName, routeMatcherContext: RouteMatcherContext): Promise<RouterPhaseResult> {
 
-    const phaseRoutes = this._routesCollection.getPhaseRoutes(phase);
+    try {
+      this._logger.debug(`STARTING PHASE ROUTES - ${phase}`);
 
-    const matchStatus = phase === 'error';
-    const canAddResponseHeaders = phase !== 'hit' && phase !== 'miss';
+      const phaseRoutes = this._routesCollection.getPhaseRoutes(phase);
 
-    const wildcardValue = this._wildcardMap[routeMatcherContext.host];
+      const matchStatus = phase === 'error';
+      const canAddResponseHeaders = phase !== 'hit' && phase !== 'miss';
 
-    // Make a copy of the pathname for rewrite
-    const originalDest = routeMatcherContext.pathname;
+      const wildcardValue = this._wildcardMap[routeMatcherContext.host];
 
-    let matchedRoute: RouteWithSrc | null = null;
-    let matchedRouteIndex: number | null = null;
-    let replacementTokens: Record<string, string> | undefined;
+      let matchedRoute: RouteWithSrc | null = null;
+      let matchedRouteIndex: number | null = null;
+      let replacementTokens: Record<string, string> | undefined;
 
-    for (const [routeIndex, route] of phaseRoutes.entries()) {
+      for (const [routeIndex, route] of phaseRoutes.entries()) {
 
-      if (isHandler(route)) {
-        // We don't really expect these, but just in case
-        continue;
-      }
-
-      this._logger.debug({
-        route,
-        status: routeMatcherContext.status,
-        pathname: routeMatcherContext.pathname,
-        query: routeMatcherContext.query,
-        matchStatus,
-      });
-
-      const testRouteResult = testRoute(route, routeMatcherContext, matchStatus);
-      if (!testRouteResult) {
-        continue;
-      }
-
-      let isContinue: boolean | undefined;
-      let status: number | undefined = undefined;
-      let requestHeaders: HttpHeaders | undefined = undefined;
-      let responseHeaders: Record<string, string> | undefined = undefined;
-      let dest: string | undefined = undefined;
-      let syntheticResponse: Response | undefined = undefined;
-      let isCheck: boolean;
-
-      replacementTokens = undefined;
-
-      if (route.middlewarePath != null) {
-        if (phase != null) {
-          throw new Error('Unexpected! middleware should only be when phase == null');
+        if (isHandler(route)) {
+          // We don't really expect these, but just in case
+          continue;
         }
 
-        if (route.dest != null || route.status != null || route.headers != null) {
-          throw new Error('Unexpected! middleware route should not have dest, status, or headers');
+        this._logger.debug({
+          phase,
+          route,
+          status: routeMatcherContext.status,
+          pathname: routeMatcherContext.pathname,
+          query: routeMatcherContext.query,
+          matchStatus,
+        });
+
+        const testRouteResult = testRoute(route, routeMatcherContext, matchStatus);
+        this._logger.debug('testRouteResult', !!testRouteResult);
+        if (!testRouteResult) {
+          continue;
         }
 
-        const response = await this.doMiddlewareFunction(route.middlewarePath, routeMatcherContext);
+        let isContinue: boolean | undefined;
+        let status: number | undefined = undefined;
+        let requestHeaders: HttpHeaders | undefined = undefined;
+        let responseHeaders: Record<string, string> | undefined = undefined;
+        let dest: string | undefined = undefined;
+        let syntheticResponse: Response | undefined = undefined;
+        let isCheck: boolean;
 
-        status = response.status;
-        if (response.dest != null) {
-          dest = response.dest;
-        }
+        replacementTokens = undefined;
 
-        if (response.headers) {
-          for (const [key, value] of Object.entries(response.headers)) {
-            if (responseHeaders == null) {
-              responseHeaders = {};
+        if (route.middlewarePath != null) {
+          if (phase != null) {
+            throw new Error('Unexpected! middleware should only be when phase == null');
+          }
+
+          if (route.dest != null || route.status != null || route.headers != null) {
+            throw new Error('Unexpected! middleware route should not have dest, status, or headers');
+          }
+
+          const response = await this.doMiddlewareFunction(route.middlewarePath, routeMatcherContext);
+
+          status = response.status;
+          if (response.dest != null) {
+            dest = response.dest;
+          }
+
+          if (response.headers) {
+            for (const [key, value] of Object.entries(response.headers)) {
+              if (responseHeaders == null) {
+                responseHeaders = {};
+              }
+              responseHeaders[key.toLowerCase()] = value;
             }
-            responseHeaders[key.toLowerCase()] = value;
           }
-        }
 
-        requestHeaders = response.requestHeaders;
-        isContinue = response.isContinue;
+          requestHeaders = response.requestHeaders;
+          isContinue = response.isContinue;
 
-        if (response.response != null) {
-          syntheticResponse = response.response;
-        }
-
-      } else {
-
-        replacementTokens = {};
-
-        // Prepare string replacement tokens, including wildcard
-        for (const [index, key] of testRouteResult.keys.entries()) {
-          replacementTokens[key] = testRouteResult.match[index+1] ?? '';
-        }
-        for (const [index, value] of testRouteResult.match.entries()) {
-          replacementTokens[index] = value;
-        }
-        replacementTokens[`wildcard`] = wildcardValue;
-
-        // Only do string replacements for non-middleware paths
-        if (route.dest != null) {
-          if (phase == 'hit') {
-            throw new Error(`Unexpected! 'hit' phase cannot have a route with 'dest'.`);
+          if (response.response != null) {
+            syntheticResponse = response.response;
           }
-          dest = resolveRouteParameters(route.dest, replacementTokens);
-        }
 
-        if (route.headers != null) {
-          for (const [key, value] of Object.entries(route.headers)) {
-            if (responseHeaders == null) {
-              responseHeaders = {};
+        } else {
+
+          replacementTokens = {};
+
+          // Prepare string replacement tokens, including wildcard
+          for (const [index, key] of testRouteResult.keys.entries()) {
+            replacementTokens[key] = testRouteResult.match[index+1] ?? '';
+          }
+          for (const [index, value] of testRouteResult.match.entries()) {
+            replacementTokens[index] = value;
+          }
+          replacementTokens[`wildcard`] = wildcardValue;
+
+          // Only do string replacements for non-middleware paths
+          if (route.dest != null) {
+            if (phase == 'hit') {
+              throw new Error(`Unexpected! 'hit' phase cannot have a route with 'dest'.`);
             }
-            responseHeaders[key.toLowerCase()] = resolveRouteParameters(value, replacementTokens);
+            dest = resolveRouteParameters(route.dest, replacementTokens);
           }
-        }
 
-        if (route.status != null) {
+          if (route.headers != null) {
+            for (const [key, value] of Object.entries(route.headers)) {
+              if (responseHeaders == null) {
+                responseHeaders = {};
+              }
+              responseHeaders[key.toLowerCase()] = resolveRouteParameters(value, replacementTokens);
+            }
+          }
+
+          if (route.status != null) {
+            if (phase == 'hit') {
+              throw new Error(`Unexpected! 'hit' phase cannot have a route with 'status'.`);
+            }
+            if (phase !== 'error') {
+              status = route.status;
+            }
+          }
+
+          isContinue = route.continue ?? false;
           if (phase == 'hit') {
-            throw new Error(`Unexpected! 'hit' phase cannot have a route with 'status'.`);
-          }
-          if (phase !== 'error') {
-            status = route.status;
+            if (!isContinue) {
+              throw new Error(`Unexpected! 'hit' phase cannot have a route without 'continue'.`);
+            }
           }
         }
 
-        isContinue = route.continue ?? false;
+        isCheck = route.check ?? false;
         if (phase == 'hit') {
-          if (!isContinue) {
-            throw new Error(`Unexpected! 'hit' phase cannot have a route without 'continue'.`);
+          if (isCheck) {
+            throw new Error(`Unexpected! 'hit' phase cannot have a route with 'check'.`);
           }
         }
-      }
 
-      isCheck = route.check ?? false;
-      if (phase == 'hit') {
-        if (isCheck) {
-          throw new Error(`Unexpected! 'hit' phase cannot have a route with 'check'.`);
+        // Merge request headers
+        if (requestHeaders != null) {
+          for (const [key, value] of Object.entries(requestHeaders)) {
+            routeMatcherContext.setRequestHeader(key.toLowerCase(), value);
+          }
         }
-      }
 
-      // Merge request headers
-      if (requestHeaders != null) {
-        for (const [key, value] of Object.entries(requestHeaders)) {
-          routeMatcherContext.setRequestHeader(key.toLowerCase(), value);
+        // Apply status
+        if (status != null) {
+          this._logger.debug('Setting status', status);
+          routeMatcherContext.setStatus(status);
         }
-      }
 
-      // Apply status
-      if (status != null) {
-        routeMatcherContext.setStatus(status);
-      }
-
-      // Merge response headers
-      if (responseHeaders != null) {
-        for (const [key, value] of Object.entries(responseHeaders)) {
-          routeMatcherContext.setResponseHeader(key.toLowerCase(), value, canAddResponseHeaders);
+        // Merge response headers
+        if (responseHeaders != null) {
+          for (const [key, value] of Object.entries(responseHeaders)) {
+            this._logger.debug('Applying response header', {key, value, canAddResponseHeaders});
+            routeMatcherContext.setResponseHeader(key.toLowerCase(), value, canAddResponseHeaders);
+          }
         }
-      }
 
-      // NOTE: in Next.js, locale redirects always occur on their own.
-      // For now, we'll treat it as undefined behavior if
-      // they're combined with other actions like headers, status, dest, etc.
+        // NOTE: in Next.js, locale redirects always occur on their own.
+        // For now, we'll treat it as undefined behavior if
+        // they're combined with other actions like headers, status, dest, etc.
 
-      // Handle locale redirect
-      if (route.locale != null) {
+        // Handle locale redirect
+        if (route.locale != null) {
 
-        if (route.locale?.redirect != null) {
-          let localeRedirect: string | null = null;
+          if (route.locale?.redirect != null) {
+            let localeRedirect: string | null = null;
 
-          // Vercel's implementation of locale seems pretty rudimentary at this point.
-          // * does not consider the language-region syntax, only exact matches
-          // * checks locale names in a case-insensitive way
+            // Vercel's implementation of locale seems pretty rudimentary at this point.
+            // * does not consider the language-region syntax, only exact matches
+            // * checks locale names in a case-insensitive way
 
-          // 1. if a cookie name is specified, then we check that cookie.
-          let cookieValue: string | null = null;
+            // 1. if a cookie name is specified, then we check that cookie.
+            let cookieValue: string | null = null;
 
-          const cookieName = (route.locale.cookie ?? '').trim().toLowerCase();
-          if (cookieName !== '') {
-            // Cookie names are usually case-sensitive, but we emulate Vercel's behavior here
-            // and find a matching cookie in a case-insensitive way
-            for (const [key, value] of Object.entries(routeMatcherContext.cookies)) {
-              if (key.toLowerCase() === cookieName) {
-                cookieValue = value;
-                break;
+            const cookieName = (route.locale.cookie ?? '').trim().toLowerCase();
+            if (cookieName !== '') {
+              // Cookie names are usually case-sensitive, but we emulate Vercel's behavior here
+              // and find a matching cookie in a case-insensitive way
+              for (const [key, value] of Object.entries(routeMatcherContext.cookies)) {
+                if (key.toLowerCase() === cookieName) {
+                  cookieValue = value;
+                  break;
+                }
               }
             }
-          }
-          if (cookieValue != null) {
-            for (const [key, value] of Object.entries(route.locale.redirect)) {
-              if (key.toLowerCase() === cookieValue) {
-                localeRedirect = value;
-                break;
-              }
-            }
-          }
-
-          if (localeRedirect == null) {
-            // 2. we use Accept-Language header from request.
-            // * Vercel's behavior seems to not consider the language-region syntax, only exact matches
-            // * checks only the first segment, even if more than one is listed
-            // * even if the first one doesn't match any of the known locales
-            // * ignores q= weights
-            const acceptLanguage = (routeMatcherContext.headers['accept-language'] ?? '')
-              .split(',')[0] // Take the first one only
-              .split(';')[0] // Take only the part before a semicolon
-              .trim()
-              .toLowerCase();
-
-            if (acceptLanguage !== '') {
+            if (cookieValue != null) {
               for (const [key, value] of Object.entries(route.locale.redirect)) {
-                if (key.toLowerCase() === acceptLanguage) {
+                if (key.toLowerCase() === cookieValue) {
                   localeRedirect = value;
                   break;
                 }
               }
             }
+
+            if (localeRedirect == null) {
+              // 2. we use Accept-Language header from request.
+              // * Vercel's behavior seems to not consider the language-region syntax, only exact matches
+              // * checks only the first segment, even if more than one is listed
+              // * even if the first one doesn't match any of the known locales
+              // * ignores q= weights
+              const acceptLanguage = (routeMatcherContext.headers['accept-language'] ?? '')
+                .split(',')[0] // Take the first one only
+                .split(';')[0] // Take only the part before a semicolon
+                .trim()
+                .toLowerCase();
+
+              if (acceptLanguage !== '') {
+                for (const [key, value] of Object.entries(route.locale.redirect)) {
+                  if (key.toLowerCase() === acceptLanguage) {
+                    localeRedirect = value;
+                    break;
+                  }
+                }
+              }
+            }
+
+            if (localeRedirect != null) {
+              // Only do this if the redirect takes us to another src,
+              // to avoid infinite looping.
+              if (localeRedirect !== routeMatcherContext.pathname) {
+                return {
+                  type: 'redirect',
+                  phase,
+                  matchedRoute: route,
+                  routeIndex,
+                  dest: localeRedirect,
+                  status: 307,
+                };
+              }
+            }
+
           }
 
-          if (localeRedirect != null) {
-            // Only do this if the redirect takes us to another src,
-            // to avoid infinite looping.
-            if (localeRedirect !== routeMatcherContext.pathname) {
+        } else {
+
+          // Apply dest
+          if (dest != null) {
+            routeMatcherContext.setDest(dest);
+          }
+
+          // Handle synthetic result
+          if (syntheticResponse != null) {
+            return {
+              type: 'synthetic',
+              phase,
+              matchedRoute: route,
+              routeIndex,
+              response: syntheticResponse,
+            };
+          }
+
+          // Handle proxy result
+          if (isURL(dest)) {
+            return {
+              type: 'proxy',
+              phase,
+              matchedRoute: route,
+              routeIndex,
+              dest,
+            };
+          }
+
+          // Handle status redirect
+          if (status != null && status >= 300 && status < 400) {
+
+            const location = responseHeaders?.['location'] ?? dest;
+            if (location !== '') {
               return {
                 type: 'redirect',
                 phase,
                 matchedRoute: route,
                 routeIndex,
-                dest: localeRedirect,
-                status: 307,
+                dest: location,
+                status,
               };
             }
           }
-
         }
 
-      } else {
-
-        // Apply dest
-        if (dest != null) {
-          routeMatcherContext.setDest(dest);
-        }
-
-        // Handle synthetic result
-        if (syntheticResponse != null) {
-          return {
-            type: 'synthetic',
-            phase,
-            matchedRoute: route,
-            routeIndex,
-            response: syntheticResponse,
-          };
-        }
-
-        // Handle proxy result
-        if (isURL(dest)) {
-          return {
-            type: 'proxy',
-            phase,
-            matchedRoute: route,
-            routeIndex,
-            dest,
-          };
-        }
-
-        // Handle status redirect
-        if (status != null && status >= 300 && status < 400) {
-
-          const location = responseHeaders?.['location'] ?? dest;
-          if (location !== '') {
-            return {
-              type: 'redirect',
-              phase,
-              matchedRoute: route,
-              routeIndex,
-              dest: location,
-              status,
-            };
-          }
+        // Handle continue
+        if (!isContinue) {
+          matchedRoute = route;
+          matchedRouteIndex = routeIndex;
+          break;
         }
       }
 
-      // Handle continue
-      if (!isContinue) {
-        matchedRoute = route;
-        matchedRouteIndex = routeIndex;
-        break;
+      if (
+        routeMatcherContext.status != null &&
+        (routeMatcherContext.status < 200 || routeMatcherContext.status >= 400)
+      ) {
+        return {
+          type: 'error',
+          phase,
+          matchedRoute: matchedRoute ?? undefined,
+          routeIndex: matchedRouteIndex ?? undefined,
+          status: routeMatcherContext.status,
+        };
       }
-    }
 
-    if (
-      routeMatcherContext.status != null &&
-      (routeMatcherContext.status < 200 || routeMatcherContext.status >= 400)
-    ) {
       return {
-        type: 'error',
+        type: 'dest',
         phase,
         matchedRoute: matchedRoute ?? undefined,
         routeIndex: matchedRouteIndex ?? undefined,
-        status: routeMatcherContext.status,
+        dest: routeMatcherContext.pathname,
+        originalDest: undefined,
+        routeMatches: formatQueryString(replacementTokens) ?? undefined,
       };
+
+    } finally {
+      this._logger.debug(`FINISHED PHASE ROUTES - ${phase}`);
     }
 
-    return {
-      type: 'dest',
-      phase,
-      matchedRoute: matchedRoute ?? undefined,
-      routeIndex: matchedRouteIndex ?? undefined,
-      dest: routeMatcherContext.pathname,
-      originalDest: phase === 'rewrite' ? originalDest : undefined,
-      routeMatches: formatQueryString(replacementTokens) ?? undefined,
-    };
   }
 
   async applyRouterPhaseResult(routerPhaseResult: RouterPhaseResult, routeMatcherContext: RouteMatcherContext): Promise<ApplyRouteResult> {
@@ -549,13 +558,33 @@ export default class RouteMatcher {
 
       if (doCheck) {
 
+        // Make a copy of the pathname to use for the actual request
+        const originalDest = routeMatcherContext.pathname;
         const filesystemRoutesResult = await this.doRouterPhase('filesystem', routeMatcherContext);
+        if (filesystemRoutesResult.type === 'dest') {
+          filesystemRoutesResult.originalDest = originalDest;
+        }
         this._logger.debug('filesystem routes - filesystemRoutesResult', JSON.stringify(filesystemRoutesResult, null, 2));
         if (filesystemRoutesResult.matchedRoute != null) {
 
           const applyRouteResult = await this.applyRouterPhaseResult(filesystemRoutesResult, routeMatcherContext);
           this._logger.debug('filesystem routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
           // Because this is the 'filesystem' phase, it would be 'skipped' if the route has just a dest
+          if (applyRouteResult.type !== 'skipped') {
+            return applyRouteResult;
+          }
+
+        }
+
+        const rewriteRoutesResult = await this.doRouterPhase('rewrite', routeMatcherContext);
+        if (rewriteRoutesResult.type === 'dest') {
+          rewriteRoutesResult.originalDest = originalDest;
+        }
+        this._logger.debug('rewrite routes - rewriteRoutesResult', JSON.stringify(rewriteRoutesResult, null, 2));
+        if (rewriteRoutesResult.matchedRoute != null) {
+
+          const applyRouteResult = await this.applyRouterPhaseResult(rewriteRoutesResult, routeMatcherContext);
+          this._logger.debug('rewrite routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
           if (applyRouteResult.type !== 'skipped') {
             return applyRouteResult;
           }
@@ -579,18 +608,6 @@ export default class RouteMatcher {
 
           } finally {
             routeMatcherContext.restoreState(prevState);
-          }
-
-        }
-
-        const rewriteRoutesResult = await this.doRouterPhase('rewrite', routeMatcherContext);
-        this._logger.debug('rewrite routes - rewriteRoutesResult', JSON.stringify(rewriteRoutesResult, null, 2));
-        if (rewriteRoutesResult.matchedRoute != null) {
-
-          const applyRouteResult = await this.applyRouterPhaseResult(rewriteRoutesResult, routeMatcherContext);
-          this._logger.debug('rewrite routes - applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
-          if (applyRouteResult.type !== 'skipped') {
-            return applyRouteResult;
           }
 
         }
