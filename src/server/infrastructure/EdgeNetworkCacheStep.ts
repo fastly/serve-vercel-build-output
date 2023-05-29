@@ -38,6 +38,7 @@ export default class EdgeNetworkCacheStep {
     requestContext: RequestContext,
     routeMatcherContext: RouteMatcherContext,
     overrideDest?: string,
+    routeMatches?: string,
   ) {
 
     const { pathname } = routeMatcherContext;
@@ -56,6 +57,7 @@ export default class EdgeNetworkCacheStep {
         requestContext,
         routeMatcherContext,
         overrideDest,
+        routeMatches,
       );
     }
 
@@ -84,6 +86,7 @@ export default class EdgeNetworkCacheStep {
     requestContext: RequestContext,
     routeMatcherContext: RouteMatcherContext,
     overrideDest?: string,
+    routeMatches?: string,
   ) {
 
     const now = Date.now();
@@ -109,7 +112,7 @@ export default class EdgeNetworkCacheStep {
 
       this._logger.debug(`doing fetch on ${routeMatcherContext.pathname}`);
 
-      let response = await this._functionsStep.doStep(requestContext, routeMatcherContext, overrideDest);
+      let response = await this._functionsStep.doStep(requestContext, routeMatcherContext, overrideDest, routeMatches);
 
       if (kvStore != null) {
 

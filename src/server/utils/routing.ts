@@ -114,7 +114,7 @@ export function resolveRouteParameters(
   tokens: Record<string, string>,
 ): string {
   return str.replace(
-    /(\$[0-9a-zA-Z]+)/g,
+    /\$([0-9a-zA-Z]+)/g,
     (_: string, param: string) => tokens[param] ?? ''
   );
 }

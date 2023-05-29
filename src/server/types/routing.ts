@@ -130,6 +130,9 @@ export type RouterPhaseResult = {
 
   // For 'rewrite' phase, return a copy of dest from before the phase
   originalDest?: string,
+
+  // Replacement Tokens stringified, for dest mode
+  routeMatches?: string,
 };
 
 export type ApplyRouteResultApplied = {

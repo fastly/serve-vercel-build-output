@@ -5,6 +5,7 @@ import { createRouteMatcherContext } from "./RouteMatcherContext.js";
 import { isURL, resolveRouteParameters, testRoute} from "../utils/routing.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import { PromiseOrValue } from "../utils/misc.js";
+import { formatQueryString } from "../utils/query.js";
 
 import type {
   HttpHeaders,
@@ -178,6 +179,7 @@ export default class RouteMatcher {
 
     let matchedRoute: RouteWithSrc | null = null;
     let matchedRouteIndex: number | null = null;
+    let replacementTokens: Record<string, string> | undefined;
 
     for (const [routeIndex, route] of phaseRoutes.entries()) {
 
@@ -206,6 +208,8 @@ export default class RouteMatcher {
       let dest: string | undefined = undefined;
       let syntheticResponse: Response | undefined = undefined;
       let isCheck: boolean;
+
+      replacementTokens = undefined;
 
       if (route.middlewarePath != null) {
         if (phase != null) {
@@ -241,15 +245,16 @@ export default class RouteMatcher {
 
       } else {
 
+        replacementTokens = {};
+
         // Prepare string replacement tokens, including wildcard
-        const replacementTokens: Record<string, string> = {};
         for (const [index, key] of testRouteResult.keys.entries()) {
-          replacementTokens[`$${key}`] = testRouteResult.match[index+1] ?? '';
+          replacementTokens[key] = testRouteResult.match[index+1] ?? '';
         }
         for (const [index, value] of testRouteResult.match.entries()) {
-          replacementTokens[`$${index}`] = value;
+          replacementTokens[index] = value;
         }
-        replacementTokens[`$wildcard`] = wildcardValue;
+        replacementTokens[`wildcard`] = wildcardValue;
 
         // Only do string replacements for non-middleware paths
         if (route.dest != null) {
@@ -461,6 +466,7 @@ export default class RouteMatcher {
       routeIndex: matchedRouteIndex ?? undefined,
       dest: routeMatcherContext.pathname,
       originalDest: phase === 'rewrite' ? originalDest : undefined,
+      routeMatches: formatQueryString(replacementTokens) ?? undefined,
     };
   }
 

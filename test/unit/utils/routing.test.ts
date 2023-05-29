@@ -57,10 +57,10 @@ describe('utils/routing', function() {
 
         const replacementTokens: Record<string, string> = {};
         for (const [index, key] of keys.entries()) {
-          replacementTokens[`$${key}`] = match[index+1] ?? '';
+          replacementTokens[key] = match[index+1] ?? '';
         }
         for (const [index, value] of match.entries()) {
-          replacementTokens[`$${index}`] = value;
+          replacementTokens[index] = value;
         }
 
         const resolved = resolveRouteParameters(route.dest!, replacementTokens);

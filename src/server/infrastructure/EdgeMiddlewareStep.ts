@@ -116,6 +116,7 @@ export default class EdgeMiddlewareStep {
         requestContext,
         routeMatcherContext,
         routerResult.originalDest,
+        routerResult.routeMatches,
       );
     } else if (routerResult.type === 'synthetic') {
       if (routerResult.response == null) {

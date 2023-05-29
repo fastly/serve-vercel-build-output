@@ -25,12 +25,18 @@ export default class FunctionsStep {
     requestContext: RequestContext,
     routeMatcherContext: RouteMatcherContext,
     overrideDest?: string,
+    routeMatches?: string,
   ) {
 
     const request = routeMatcherContextToRequest(
       routeMatcherContext,
       overrideDest,
     );
+    if (routeMatches != null) {
+      // Emulate Vercel's behavior of setting this header
+      this._logger.debug('Setting x-now-route-matches', routeMatches);
+      request.headers.set('x-now-route-matches', routeMatches);
+    }
     const { client, edgeFunctionContext } = requestContext;
 
     // TODO: figure out how to handle the response headers relating to caching
