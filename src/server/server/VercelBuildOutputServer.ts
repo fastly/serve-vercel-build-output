@@ -2,7 +2,6 @@ import { env } from "fastly:env";
 
 import { ContentAssets, ModuleAssets } from "@fastly/compute-js-static-publish";
 
-import { PRERENDER_REVALIDATE_HEADER } from "../constants.js";
 import VercelBuildOutputTemplateEngine from "../templating/VercelBuildOutputTemplateEngine.js";
 import AssetsCollection from "../assets/AssetsCollection.js";
 import { Backends, BackendsDefs, EdgeFunctionContext } from "./types.js";
@@ -12,11 +11,11 @@ import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
 import { execLayerFunctionPathnameFromRequest, isExecLayerRequest } from "../utils/execLayer.js";
 import { onBeforeFetch } from "../utils/patchFetch.js";
+import { getThreadLocal, setThreadLocal } from "../utils/thread-local-storage.js";
 import NextImageService from "../services/next-image.js";
 
 export type ServerConfig = {
   backends: Backends | 'dynamic',
-  selfInvokeBackend?: string,
   cachingKvStore?: string,
   execLayerMiddlewareBackend: string | undefined,
   execLayerFunctionBackend: string | undefined,
@@ -24,7 +23,6 @@ export type ServerConfig = {
 
 export type ServerConfigInit = {
   backends?: BackendsDefs,
-  selfInvokeBackend?: string,
   cachingKvStore?: string,
   execLayerMiddlewareBackend?: string,
   execLayerFunctionBackend?: string,
@@ -99,7 +97,6 @@ export default class VercelBuildOutputServer {
 
     this.serverConfig = {
       backends,
-      selfInvokeBackend: serverConfig?.selfInvokeBackend,
       cachingKvStore: serverConfig?.cachingKvStore,
       execLayerMiddlewareBackend: serverConfig?.execLayerMiddlewareBackend,
       execLayerFunctionBackend: serverConfig?.execLayerFunctionBackend,
@@ -119,20 +116,47 @@ export default class VercelBuildOutputServer {
 
   // @deprecated
   public async initialize() {
-    if (this.serverConfig.backends !== 'dynamic') {
-      onBeforeFetch((fetch, input, init) => {
-        let newRequestInit = {
-          ...init
-        };
-        if (
-          (input instanceof Request && input.headers.has(PRERENDER_REVALIDATE_HEADER)) ||
-          new Headers(init?.headers).has(PRERENDER_REVALIDATE_HEADER)
-        ) {
-          newRequestInit.backend = this.serverConfig.selfInvokeBackend ?? 'self';
+
+    // C@E services can't recursively call into themselves.
+    // Hook the fetch() that goes to self and replace with a call to serveRequest.
+    onBeforeFetch((fetch, input, init) => {
+
+      const event = getThreadLocal<FetchEvent>('fetchEvent');
+      if (event == null) {
+        this._logger.warn(`fetch() -- getThreadLocal('fetchEvent') was null.`);
+        // Return null causes original fetch to be called
+        return null;
+      } else {
+        const eventRequestUrl = new URL(event.request.url);
+        const requestUrl = new URL(input instanceof Request ? input.url : input);
+        if (eventRequestUrl.host !== requestUrl.host) {
+          return null;
         }
-        return fetch(input, newRequestInit);
+      }
+
+      this._logger.debug('fetch() -- detected call to self. Patching with call to serveRequest().');
+
+      const req = new Request(input instanceof Request ? input.clone() : input, init);
+      const client = event.client;
+
+      const ctxQueue: Promise<any>[] = [];
+
+      return this.serveRequest(
+        req,
+        client,
+        {
+          waitUntil(promise) {
+            ctxQueue.push(promise);
+          },
+        }
+      )
+      .then(response => {
+        this._logger.debug('fetch() -- returned from serveRequest().');
+        this._logger.debug(response);
+        return Promise.all(ctxQueue)
+          .then(() => response);
       });
-    }
+    });
 
     for (const assetKey of this.moduleAssets.getAssetKeys()) {
       if (assetKey.startsWith('/init/')) {
@@ -154,6 +178,12 @@ export default class VercelBuildOutputServer {
   public createHandler() {
 
     return (event: FetchEvent) => {
+
+      if (getThreadLocal('fetchEvent') != null) {
+        throw new Error('Recursive call to handler created by VercelBuildOutputServer.createHandler() detected.');
+      }
+
+      setThreadLocal('fetchEvent', event);
 
       return this.serveRequest(
         event.request,
