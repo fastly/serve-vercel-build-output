@@ -17,7 +17,7 @@ import type {
   MiddlewareResponse,
   ApplyRouteResultError,
 } from "../types/routing.js";
-import {ApplyRouteResult, ServeRouterErrorHandler} from "../types/routing.js";
+import type { ApplyRouteResult, ServeRouterErrorHandler } from "../types/routing.js";
 
 export type CheckFilesystemHandler =
   (pathname: string) => PromiseOrValue<boolean>;
