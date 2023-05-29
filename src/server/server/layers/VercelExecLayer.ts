@@ -73,10 +73,12 @@ export default class VercelExecLayer {
     const prevPwd = globalThis.FASTLY_SVBO_PWD;
     try {
       globalThis.FASTLY_SVBO_PWD = asset.canonicalKey;
+      this._logger.debug(`Setting PWD to ${globalThis.FASTLY_SVBO_PWD}.`);
       const func = (await asset.loadModule()).default as EdgeFunction;
       return await func(request, edgeFunctionContext);
     } finally {
       globalThis.FASTLY_SVBO_PWD = prevPwd;
+      this._logger.debug(`Reverting PWD to ${globalThis.FASTLY_SVBO_PWD ?? '(not set)'}.`);
     }
   }
 }
