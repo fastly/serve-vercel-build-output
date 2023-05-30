@@ -1,7 +1,11 @@
 import { env } from "fastly:env";
 import { KVStore } from "fastly:kv-store";
 
-import { CACHING_KVSTORE_LOCAL, PRERENDER_REVALIDATE_HEADER } from '../constants.js';
+import {
+  CACHING_KVSTORE_LOCAL,
+  PRERENDER_BYPASS_COOKIE_NAME,
+  PRERENDER_REVALIDATE_HEADER,
+} from '../constants.js';
 import { RequestContext } from "../server/types.js";
 import FunctionAsset from "../assets/FunctionAsset.js";
 import StaticAsset from "../assets/StaticAsset.js";
@@ -93,6 +97,24 @@ export default class EdgeNetworkCacheStep {
     routeMatches?: string,
   ) {
 
+    // Bypass Token
+    const bypassToken = asset.prerenderConfig?.bypassToken?.trim();
+
+    // Bypass mode
+    let prerenderBypassMode: boolean = false;
+    if (bypassToken != null) {
+      const cookies = (requestContext.request.headers.get('cookie') ?? '').split(';');
+      for (const cookie of cookies) {
+        const [name, value] = cookie.split('=');
+        if (
+          name.trim() === PRERENDER_BYPASS_COOKIE_NAME && value.trim() === bypassToken
+        ) {
+          prerenderBypassMode = true;
+          break;
+        }
+      }
+    }
+
     const now = Date.now();
 
     const kvStoreName = env('FASTLY_HOSTNAME') !== 'localhost' ?
@@ -136,6 +158,13 @@ export default class EdgeNetworkCacheStep {
       this._logger.debug('Response headers');
       for (const [key, value] of response.headers.entries()) {
         this._logger.debug(`${key}: ${value}`);
+      }
+
+      if (
+        prerenderBypassMode
+      ) {
+        this._logger.debug(`We are in prerender bypass mode, returning without caching.`);
+        return response;
       }
 
       if (
@@ -216,130 +245,135 @@ export default class EdgeNetworkCacheStep {
     let expiration: number | false = false;
     let fallback: string | undefined = undefined;
 
-    // Is this a prerender function?
-    if (asset.prerenderConfig != null) {
+    if (!prerenderBypassMode) {
 
-      // Prerender Group Key
-      groupKey = asset.prerenderConfig?.group != null ?
-        `g${requestContext.serviceId}:${asset.prerenderConfig.group}` :
-        undefined;
+      // Is this a prerender function?
+      if (asset.prerenderConfig != null) {
 
-      // expiration
-      expiration = asset.prerenderConfig.expiration;
+        // Prerender Group Key
+        groupKey = asset.prerenderConfig?.group != null ?
+          `g${requestContext.serviceId}:${asset.prerenderConfig.group}` :
+          undefined;
 
-      // fallback
-      fallback = asset.prerenderConfig.fallback;
+        // expiration
+        expiration = asset.prerenderConfig.expiration;
 
-      // Revalidate mode
-      // Only do revalidate mode if the header exists AND matches
-      // the value for the function.
-      const validationHeader =
-        requestContext.request.headers.get(PRERENDER_REVALIDATE_HEADER);
-      if (
-        validationHeader != null && (
-          asset.prerenderConfig?.bypassToken == null ||
-          validationHeader.trim() === asset.prerenderConfig?.bypassToken.trim()
-        )
-      ) {
-        if (kvStore != null) {
-          // Write group revalidate time to KV
-          if (groupKey != null) {
-            const groupEntry = {
-              refreshTimeMs: now,
-            };
-            const p = (async() => {
-              // this._logger.debug(`Writing 3 ${groupKey}`, groupEntry);
-              await kvStore.put(groupKey, JSON.stringify(groupEntry));
-              // this._logger.debug(`Wrote 3 ${groupKey}`);
-            })();
-            requestContext.edgeFunctionContext.waitUntil(p);
+        // fallback
+        fallback = asset.prerenderConfig.fallback;
+
+        // Revalidate mode
+        // Only do revalidate mode if the header exists AND matches
+        // the value for the function.
+        const validationHeader =
+          requestContext.request.headers.get(PRERENDER_REVALIDATE_HEADER)?.trim();
+        if (
+          validationHeader != null && (
+            bypassToken == null ||
+            validationHeader === bypassToken
+          )
+        ) {
+          if (kvStore != null) {
+            // Write group revalidate time to KV
+            if (groupKey != null) {
+              const groupEntry = {
+                refreshTimeMs: now,
+              };
+              const p = (async() => {
+                // this._logger.debug(`Writing 3 ${groupKey}`, groupEntry);
+                await kvStore.put(groupKey, JSON.stringify(groupEntry));
+                // this._logger.debug(`Wrote 3 ${groupKey}`);
+              })();
+              requestContext.edgeFunctionContext.waitUntil(p);
+            }
+
+            // Request updated item and save to KV
+            // NOTE: This doesn't seem to work at the moment, for some reason.
+            requestContext.edgeFunctionContext
+              .waitUntil(doFunctionStep());
           }
-
-          // Request updated item and save to KV
-          // NOTE: This doesn't seem to work at the moment, for some reason.
-          requestContext.edgeFunctionContext
-            .waitUntil(doFunctionStep());
-        }
-        this._logger.debug('x-vercel-cache: REVALIDATED');
-        return new Response(
-          null,
-          {
-            headers: {
-              'x-vercel-cache': 'REVALIDATED',
-            },
-          }
-        );
-      }
-    }
-
-    // Check for item in KV
-    if (kvStore != null) {
-
-      const cachedEntry = await this.getCachedEntry(
-        kvStore,
-        now,
-        expiration,
-        groupKey,
-        metadataEntryKey,
-        cacheEntryKey,
-      );
-
-      if (cachedEntry != null) {
-        // STALE if expired, HIT if hit
-        let cacheHeader = 'HIT';
-        if (cachedEntry.expired) {
-          cacheHeader = 'STALE';
-          // Request updated item in background and save to cache
-          requestContext.edgeFunctionContext.waitUntil(
-            doFunctionStep()
+          this._logger.debug('x-vercel-cache: REVALIDATED');
+          return new Response(
+            null,
+            {
+              headers: {
+                'x-vercel-cache': 'REVALIDATED',
+              },
+            }
           );
         }
-
-        this._logger.debug(`x-vercel-cache: ${cacheHeader}`);
-
-        return new Response(
-          cachedEntry.entry,
-          {
-            status: cachedEntry.status,
-            headers: {
-              ...cachedEntry.headers,
-              'x-vercel-cache': cacheHeader,
-            },
-          }
-        );
       }
-    }
 
-    // Either the cache is not active, or the item was not in the cache,
-    // so check if there is a prerender ('fallback') version
-    if (fallback != null) {
+      // Check for item in KV
+      if (kvStore != null) {
 
-      const fallbackAsset = this._vercelBuildOutputServer.contentAssets.getAsset(fallback);
-      if (fallbackAsset != null) {
+        const cachedEntry = await this.getCachedEntry(
+          kvStore,
+          now,
+          expiration,
+          groupKey,
+          metadataEntryKey,
+          cacheEntryKey,
+        );
 
-        if (kvStore != null) {
-          // NOTE: https://vercel.com/docs/build-output-api/v3/primitives#fallback-static-file
-          // > When the fallback file is served, the Serverless Function will also be invoked "out-of-band" to re-generate
-          // > a new version of the asset that will be cached and served for future HTTP requests.
-          requestContext.edgeFunctionContext.waitUntil(
-            doFunctionStep()
+        if (cachedEntry != null) {
+          // STALE if expired, HIT if hit
+          let cacheHeader = 'HIT';
+          if (cachedEntry.expired) {
+            cacheHeader = 'STALE';
+            // Request updated item in background and save to cache
+            requestContext.edgeFunctionContext.waitUntil(
+              doFunctionStep()
+            );
+          }
+
+          this._logger.debug(`x-vercel-cache: ${cacheHeader}`);
+
+          return new Response(
+            cachedEntry.entry,
+            {
+              status: cachedEntry.status,
+              headers: {
+                ...cachedEntry.headers,
+                'x-vercel-cache': cacheHeader,
+              },
+            }
           );
         }
-
-        const storeEntry = await fallbackAsset.getStoreEntry();
-        this._logger.debug(`x-vercel-cache: PRERENDER`);
-        return new Response(storeEntry.body, {
-          status: 200,
-          headers: {
-            'Content-Type': fallbackAsset.getMetadata().contentType,
-            'x-vercel-cache': 'PRERENDER',
-          },
-        });
       }
+
+      // Either the cache is not active, or the item was not in the cache,
+      // so check if there is a prerender ('fallback') version
+      if (fallback != null) {
+
+        const fallbackAsset = this._vercelBuildOutputServer.contentAssets.getAsset(fallback);
+        if (fallbackAsset != null) {
+
+          if (kvStore != null) {
+            // NOTE: https://vercel.com/docs/build-output-api/v3/primitives#fallback-static-file
+            // > When the fallback file is served, the Serverless Function will also be invoked "out-of-band" to re-generate
+            // > a new version of the asset that will be cached and served for future HTTP requests.
+            requestContext.edgeFunctionContext.waitUntil(
+              doFunctionStep()
+            );
+          }
+
+          const storeEntry = await fallbackAsset.getStoreEntry();
+          this._logger.debug(`x-vercel-cache: PRERENDER`);
+          return new Response(storeEntry.body, {
+            status: 200,
+            headers: {
+              'Content-Type': fallbackAsset.getMetadata().contentType,
+              'x-vercel-cache': 'PRERENDER',
+            },
+          });
+        }
+      }
+
     }
 
-    // If we are here, then the item was not found in the cache and there was no
-    // prerender version.
+    // If we are here, then one of the following is true:
+    // * the item was not found in the cache and there was no prerender version.
+    // * we are in prerender bypass mode
 
     this._logger.debug(`x-vercel-cache: MISS`);
 
