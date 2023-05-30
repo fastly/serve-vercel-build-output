@@ -256,6 +256,7 @@ export default class EdgeNetworkCacheStep {
           }
 
           // Request updated item and save to KV
+          // NOTE: This doesn't seem to work at the moment, for some reason.
           requestContext.edgeFunctionContext
             .waitUntil(doFunctionStep());
         }
@@ -317,7 +318,9 @@ export default class EdgeNetworkCacheStep {
       if (fallbackAsset != null) {
 
         if (kvStore != null) {
-          // Request updated item in background and save to cache
+          // NOTE: https://vercel.com/docs/build-output-api/v3/primitives#fallback-static-file
+          // > When the fallback file is served, the Serverless Function will also be invoked "out-of-band" to re-generate
+          // > a new version of the asset that will be cached and served for future HTTP requests.
           requestContext.edgeFunctionContext.waitUntil(
             doFunctionStep()
           );
@@ -400,6 +403,8 @@ export default class EdgeNetworkCacheStep {
           now > createTimeMs + staleWhileRevalidateValue * 1000
         )
       ) {
+        // if this is older than state-while-revalidate limit, then it's considered to not even
+        // be in the cache.
         return null;
       }
     }
