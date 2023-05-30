@@ -1,9 +1,7 @@
 import { getLogger, ILogger } from "../logging/index.js";
-import { routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
 import VercelBuildOutputServer from "../server/VercelBuildOutputServer.js";
 
 import type { RequestContext } from "../server/types.js";
-import type { RouteMatcherContext } from "../types/routing";
 
 export type FunctionsStepInit = {
   vercelBuildOutputServer: VercelBuildOutputServer,
@@ -23,20 +21,9 @@ export default class FunctionsStep {
 
   async doStep(
     requestContext: RequestContext,
-    routeMatcherContext: RouteMatcherContext,
-    overrideDest?: string,
-    routeMatches?: string,
+    request: Request,
   ) {
 
-    const request = routeMatcherContextToRequest(
-      routeMatcherContext,
-      overrideDest,
-    );
-    if (routeMatches != null) {
-      // Emulate Vercel's behavior of setting this header
-      this._logger.debug('Setting x-now-route-matches', routeMatches);
-      request.headers.set('x-now-route-matches', routeMatches);
-    }
     const { client, edgeFunctionContext } = requestContext;
 
     // TODO: figure out how to handle the response headers relating to caching
@@ -45,7 +32,6 @@ export default class FunctionsStep {
       request,
       client,
       edgeFunctionContext,
-      routeMatcherContext.pathname,
       this._vercelBuildOutputServer.serverConfig.execLayerFunctionBackend,
     );
   }

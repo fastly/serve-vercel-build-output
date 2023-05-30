@@ -31,9 +31,11 @@ export default class VercelExecLayer {
     request: Request,
     client: ClientInfo,
     edgeFunctionContext: EdgeFunctionContext,
-    functionPathname: string,
     backend: string | undefined,
   ) {
+    const [functionPathname] = (request.headers.get('x-matched-path') ?? '')
+      .split('?')
+
     const asset = this._vercelBuildOutputServer.assetsCollection.getAsset(functionPathname);
     if (!(asset instanceof FunctionAsset) || asset.vcConfig.runtime !== 'edge') {
       // not found (or wasn't a edge function)
@@ -50,8 +52,6 @@ export default class VercelExecLayer {
         request.headers.set('x-real-ip', clientAddress);
       }
     }
-
-    request.headers.set('x-matched-path', functionPathname);
 
     if (backend != null) {
       // TODO: Also handle dynamic backends

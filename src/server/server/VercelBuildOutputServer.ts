@@ -9,7 +9,7 @@ import { generateRequestId } from "../utils/request.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
-import { execLayerFunctionPathnameFromRequest, isExecLayerRequest } from "../utils/execLayer.js";
+import { isExecLayerRequest } from "../utils/execLayer.js";
 import { onBeforeFetch } from "../utils/patchFetch.js";
 import { getThreadLocal, setThreadLocal } from "../utils/thread-local-storage.js";
 import NextImageService from "../services/next-image.js";
@@ -130,6 +130,7 @@ export default class VercelBuildOutputServer {
         const eventRequestUrl = new URL(event.request.url);
         const requestUrl = new URL(input instanceof Request ? input.url : input);
         if (eventRequestUrl.host !== requestUrl.host) {
+          this._logger.warn(`fetch() -- fetch to host other than ${eventRequestUrl.host}.`);
           return null;
         }
       }
@@ -141,21 +142,27 @@ export default class VercelBuildOutputServer {
 
       const ctxQueue: Promise<any>[] = [];
 
-      return this.serveRequest(
-        req,
-        client,
-        {
-          waitUntil(promise) {
-            ctxQueue.push(promise);
-          },
-        }
-      )
-      .then(response => {
+      return (async() => {
+        const response = this.serveRequest(
+          req,
+          client,
+          {
+            waitUntil(promise) {
+              ctxQueue.push(promise);
+            },
+          }
+        );
+
         this._logger.debug('fetch() -- returned from serveRequest().');
         this._logger.debug(response);
-        return Promise.all(ctxQueue)
-          .then(() => response);
-      });
+
+        while (ctxQueue.length > 0) {
+          await ctxQueue.shift();
+        }
+
+        return response;
+      })();
+
     });
 
     for (const assetKey of this.moduleAssets.getAssetKeys()) {
@@ -205,12 +212,10 @@ export default class VercelBuildOutputServer {
   ): Promise<Response> {
 
     if (isExecLayerRequest(request)) {
-      const functionPathname = execLayerFunctionPathnameFromRequest(request);
       return await this.vercelExecLayer.execFunction(
         request,
         client,
         edgeFunctionContext,
-        functionPathname,
         undefined,
       );
     }

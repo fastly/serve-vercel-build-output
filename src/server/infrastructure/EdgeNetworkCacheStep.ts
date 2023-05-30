@@ -7,9 +7,12 @@ import FunctionAsset from "../assets/FunctionAsset.js";
 import StaticAsset from "../assets/StaticAsset.js";
 import { getLogger, ILogger } from "../logging/index.js";
 import FunctionsStep from "./FunctionsStep.js";
+import { routeMatcherContextToRequest } from "../routing/RouteMatcherContext.js";
 import VercelBuildOutputServer from "../server/VercelBuildOutputServer.js";
 import { encodeKvSegment, encodeQueryForKv } from "../utils/kv.js";
 import { parseCacheControl } from "../utils/cacheControl.js";
+import { formatQueryString } from "../utils/query.js";
+import { readableStreamToArray } from "../utils/stream.js";
 
 import type { HttpHeaders, RouteMatcherContext } from "../types/routing.js";
 
@@ -109,67 +112,104 @@ export default class EdgeNetworkCacheStep {
     const metadataEntryKey =
       `m${entryId}`;
 
-    const doRequest = async () => {
+    const doFunctionStep = async(returnResponse: boolean = false) => {
+      this._logger.debug(`Doing functions step: ${routeMatcherContext.pathname}`);
 
-      this._logger.debug(`doing fetch on ${routeMatcherContext.pathname}`);
+      const request = routeMatcherContextToRequest(
+        routeMatcherContext,
+        overrideDest,
+      );
+      if (routeMatches != null) {
+        // Emulate Vercel's behavior of setting this header
+        request.headers.set('x-now-route-matches', routeMatches);
+      }
+      request.headers.set('x-matched-path', routeMatcherContext.pathname + (formatQueryString(routeMatcherContext.query) ?? ''));
 
-      let response = await this._functionsStep.doStep(requestContext, routeMatcherContext, overrideDest, routeMatches);
+      this._logger.debug(`request.url: ${request.url}`);
+      this._logger.debug('Request headers');
+      for (const [key, value] of request.headers.entries()) {
+        this._logger.debug(`${key}: ${value}`);
+      }
+
+      const response = await this._functionsStep.doStep(requestContext, request);
 
       this._logger.debug('Response headers');
       for (const [key, value] of response.headers.entries()) {
         this._logger.debug(`${key}: ${value}`);
       }
 
-      if (kvStore != null) {
+      if (
+        routeMatcherContext.method !== 'GET' && routeMatcherContext.method !== 'HEAD'
+      ) {
+        this._logger.debug(`Not a GET or HEAD request, returning without caching.`);
+        return response;
+      }
 
-        let body: string | null = null;
-        if (response.body != null) {
+      if (kvStore == null) {
+        this._logger.debug(`KV not enabled, returning without caching.`);
+        return response;
+      }
 
-          // this._logger.debug('teeing');
-          // let body2: ReadableStream<Uint8Array>;
-          // const [ body, body2 ] = response.body.tee();
+      const headers: HttpHeaders = {};
+      for (const [key, value] of response.headers.entries()) {
+        headers[key.toLowerCase()] = value;
+      }
 
-          // Read entire response.
-          // Hopefully this is enough RAM.
-          body = await response.text();
-          response = new Response(body, {
+      const cacheControlValue = parseCacheControl(headers['cache-control']);
+      this._logger.debug('cache control value', cacheControlValue);
+
+      // Only cache things if they are marked as public responses
+      if (!cacheControlValue?.isPublic) {
+        this._logger.debug(`Cache control value not public, returning without caching.`);
+        return response;
+      }
+
+      let responseToReturn: Response | null;
+
+      // TODO: One day when response.clone() is implemented, use it
+      // response.body.tee doesn't seem to work well either =(
+      const array = response.body != null ? await readableStreamToArray(response.body) : null;
+
+      // TODO: It seems that KVStore.prototype.put() doesn't seem to work with
+      // user-provided ReadableStream, so we serialize it first
+      let cacheSaveBody: BodyInit | null = array;
+
+
+      // If returnResponse is false, then we don't need to return the
+      // response to the caller, so we don't bother cloning it
+      if (returnResponse) {
+        responseToReturn = new Response(
+          array,
+          {
             status: response.status,
             headers: response.headers,
-          });
+          }
+        );
+      } else {
+        responseToReturn = {} as Response;
+      }
 
-        }
+      const status = response.status;
+      const responseMeta = {
+        status,
+        headers,
+        createTimeMs: now,
+        ...cacheControlValue,
+      };
 
-        const status = response.status;
-        const headers: HttpHeaders = {};
-        for (const [key, value] of response.headers.entries()) {
-          headers[key.toLowerCase()] = value;
-        }
+      // this._logger.debug(`Writing 1 ${metadataEntryKey}`, responseMeta);
+      await kvStore.put(metadataEntryKey, JSON.stringify(responseMeta));
+      // this._logger.debug(`Wrote 1 ${metadataEntryKey}`);
 
-        const cacheControlValue = parseCacheControl(headers['cache-control']);
-
-        const responseMeta = {
-          status,
-          headers,
-          createTimeMs: now,
-          ...cacheControlValue,
-        };
-
-        this._logger.debug(`Writing ${metadataEntryKey}`, responseMeta);
-
-        // await Promise.all([
-        await kvStore.put(metadataEntryKey, JSON.stringify(responseMeta));
-
-        if (body != null) {
-          this._logger.debug(`Writing ${cacheEntryKey}`);
-          await kvStore.put(cacheEntryKey, body);
-        }
-        // ]);
+      if (cacheSaveBody != null) {
+        // this._logger.debug(`Writing 2 ${cacheEntryKey}`);
+        await kvStore.put(cacheEntryKey, cacheSaveBody);
+        // this._logger.debug(`Wrote 2 ${cacheEntryKey}`);
       }
 
       this._logger.debug(`returning fetch result`);
 
-      return response;
-
+      return responseToReturn;
     };
 
     let groupKey: string | undefined = undefined;
@@ -201,26 +241,23 @@ export default class EdgeNetworkCacheStep {
           validationHeader.trim() === asset.prerenderConfig?.bypassToken.trim()
         )
       ) {
-
         if (kvStore != null) {
-
-          const promises: Promise<unknown>[] = [];
-
           // Write group revalidate time to KV
           if (groupKey != null) {
             const groupEntry = {
               refreshTimeMs: now,
             };
-            promises.push(kvStore.put(groupKey, JSON.stringify(groupEntry)));
+            const p = (async() => {
+              // this._logger.debug(`Writing 3 ${groupKey}`, groupEntry);
+              await kvStore.put(groupKey, JSON.stringify(groupEntry));
+              // this._logger.debug(`Wrote 3 ${groupKey}`);
+            })();
+            requestContext.edgeFunctionContext.waitUntil(p);
           }
 
           // Request updated item and save to KV
-          promises.push(doRequest());
-
-          // do these in background
           requestContext.edgeFunctionContext
-            .waitUntil(Promise.all(promises));
-
+            .waitUntil(doFunctionStep());
         }
         this._logger.debug('x-vercel-cache: REVALIDATED');
         return new Response(
@@ -253,7 +290,7 @@ export default class EdgeNetworkCacheStep {
           cacheHeader = 'STALE';
           // Request updated item in background and save to cache
           requestContext.edgeFunctionContext.waitUntil(
-            doRequest()
+            doFunctionStep()
           );
         }
 
@@ -282,7 +319,7 @@ export default class EdgeNetworkCacheStep {
         if (kvStore != null) {
           // Request updated item in background and save to cache
           requestContext.edgeFunctionContext.waitUntil(
-            doRequest()
+            doFunctionStep()
           );
         }
 
@@ -304,7 +341,7 @@ export default class EdgeNetworkCacheStep {
     this._logger.debug(`x-vercel-cache: MISS`);
 
     // serve it normally and save the result to cache
-    return await doRequest();
+    return await doFunctionStep(true);
   }
 
   async getCachedEntry(

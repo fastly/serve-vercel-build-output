@@ -179,7 +179,7 @@ export default class RouteMatcher {
 
       let matchedRoute: RouteWithSrc | null = null;
       let matchedRouteIndex: number | null = null;
-      let replacementTokens: Record<string, string> | undefined;
+      let matchedReplacementTokens: Record<string, string> | undefined;
 
       for (const [routeIndex, route] of phaseRoutes.entries()) {
 
@@ -211,7 +211,7 @@ export default class RouteMatcher {
         let syntheticResponse: Response | undefined = undefined;
         let isCheck: boolean;
 
-        replacementTokens = undefined;
+        let replacementTokens: typeof matchedReplacementTokens = undefined;
 
         if (route.middlewarePath != null) {
           if (phase != null) {
@@ -446,6 +446,7 @@ export default class RouteMatcher {
         if (!isContinue) {
           matchedRoute = route;
           matchedRouteIndex = routeIndex;
+          matchedReplacementTokens = replacementTokens;
           break;
         }
       }
@@ -463,6 +464,12 @@ export default class RouteMatcher {
         };
       }
 
+      let routeMatches: string | undefined = undefined;
+      const routeMatchesString = formatQueryString(matchedReplacementTokens);
+      if (routeMatchesString != null) {
+        routeMatches = routeMatchesString.startsWith('?') ? routeMatchesString.slice(1) : routeMatchesString;
+      }
+
       return {
         type: 'dest',
         phase,
@@ -470,7 +477,7 @@ export default class RouteMatcher {
         routeIndex: matchedRouteIndex ?? undefined,
         dest: routeMatcherContext.pathname,
         originalDest: undefined,
-        routeMatches: formatQueryString(replacementTokens) ?? undefined,
+        routeMatches,
       };
 
     } finally {

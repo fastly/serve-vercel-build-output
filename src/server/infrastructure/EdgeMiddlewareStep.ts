@@ -402,6 +402,7 @@ export default class EdgeMiddlewareStep {
 
     this._logger.debug({routeMatcherContext});
     const middlewareRequest = routeMatcherContextToRequest(routeMatcherContext);
+    middlewareRequest.headers.set('x-matched-path', middlewarePath);
     this._logger.debug({middlewareRequest});
 
     // Middleware always runs on every request, so we bypass the cache
@@ -415,7 +416,6 @@ export default class EdgeMiddlewareStep {
         middlewareRequest,
         client,
         edgeFunctionContext,
-        middlewarePath,
         this._vercelBuildOutputServer.serverConfig.execLayerMiddlewareBackend,
       );
     this._logger.debug({middlewareResponse});
