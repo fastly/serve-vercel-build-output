@@ -147,11 +147,16 @@ export default class RouteMatcher {
       };
     }
 
+    routeMatcherContext.restoreState(initialState);
+
     // Error handler
     const errorPhaseResult = await this.doRouterPhase('error', routeMatcherContext);
     if (errorPhaseResult.matchedRoute != null) {
 
+      this._logger.debug('errorPhaseResult', JSON.stringify(errorPhaseResult, null, 2));
+
       const applyRouteResult = await this.applyRouterPhaseResult(errorPhaseResult, routeMatcherContext);
+      this._logger.debug('applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
       if (applyRouteResult.type === 'applied') {
         return applyRouteResult.response;
       }
@@ -161,6 +166,9 @@ export default class RouteMatcher {
       }
 
     }
+
+    this._logger.debug('did not match an error phase route');
+    this._logger.debug('errorRouteResult', JSON.stringify(errorRouteResult, null, 2));
 
     return await this.serveRouterError(errorRouteResult.status ?? 404, errorRouteResult.errorCode, routeMatcherContext.headers);
   }
@@ -451,7 +459,9 @@ export default class RouteMatcher {
         }
       }
 
+      // If we're not already in an error phase, then check for error status codes
       if (
+        phase !== 'error' &&
         routeMatcherContext.status != null &&
         (routeMatcherContext.status < 200 || routeMatcherContext.status >= 400)
       ) {
@@ -508,10 +518,18 @@ export default class RouteMatcher {
     this._logger.debug('applyRouterPhaseResult routeMatcherContext', routeMatcherContext);
 
     if (
+      routerPhaseResult.type === 'error'
+    ) {
+      return {
+        type: 'error',
+        status: routerPhaseResult.status,
+      };
+    }
+
+    if (
       routerPhaseResult.type === 'synthetic' ||
       routerPhaseResult.type === 'redirect' ||
-      routerPhaseResult.type === 'proxy' ||
-      routerPhaseResult.type === 'error'
+      routerPhaseResult.type === 'proxy'
     ) {
       try {
         const response = await this.serveRouterResult(routerPhaseResult, routeMatcherContext);
