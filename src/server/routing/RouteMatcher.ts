@@ -102,7 +102,7 @@ export default class RouteMatcher {
     const routeMatcherContext = createRouteMatcherContext(request);
 
     // Save the initial state and then restore it at the start of each loop
-    const initialState = routeMatcherContext.getState();
+    let initialState = routeMatcherContext.getState();
 
     this._logger.debug('routeMatcherContext', {
       method: routeMatcherContext.method,
@@ -127,6 +127,12 @@ export default class RouteMatcher {
       const routerPhaseResult = await this.doRouterPhase(phase, routeMatcherContext);
       this._logger.debug('routerPhaseResult', JSON.stringify(routerPhaseResult, null, 2));
 
+      // In the null phase, if there was no matching route (common since most of these have continue)
+      // then they have lasting effects on the route matcher context
+      if (phase === null && routerPhaseResult.matchedRoute == null) {
+        initialState = routeMatcherContext.getState();
+      }
+
       const applyRouteResult = await this.applyRouterPhaseResult(routerPhaseResult, routeMatcherContext);
       this._logger.debug('applyRouteResult', JSON.stringify(applyRouteResult, null, 2));
       if (applyRouteResult.type === 'applied') {
@@ -137,7 +143,9 @@ export default class RouteMatcher {
         errorRouteResult = applyRouteResult;
         break;
       }
+
     }
+
 
     // Error Phase
     if (errorRouteResult == null) {
@@ -188,6 +196,7 @@ export default class RouteMatcher {
       let matchedRoute: RouteWithSrc | null = null;
       let matchedRouteIndex: number | null = null;
       let matchedReplacementTokens: Record<string, string> | undefined;
+      let matchedRouteIsCheck: boolean | null = null;
 
       for (const [routeIndex, route] of phaseRoutes.entries()) {
 
@@ -455,6 +464,7 @@ export default class RouteMatcher {
           matchedRoute = route;
           matchedRouteIndex = routeIndex;
           matchedReplacementTokens = replacementTokens;
+          matchedRouteIsCheck = isCheck;
           break;
         }
       }
@@ -488,6 +498,7 @@ export default class RouteMatcher {
         dest: routeMatcherContext.pathname,
         originalDest: undefined,
         routeMatches,
+        isCheck: matchedRouteIsCheck ?? undefined,
       };
 
     } finally {
@@ -581,7 +592,7 @@ export default class RouteMatcher {
 
       }
 
-      if (doCheck) {
+      if (doCheck && routerPhaseResult.isCheck) {
 
         // Make a copy of the pathname to use for the actual request
         const originalDest = routeMatcherContext.pathname;
