@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.4.1] - 2023-07-24
+
 ### Updated
 
 - Updated dependency libs
@@ -17,5 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[unreleased]: https://github.com/fastly/serve-vercel-build-output/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/fastly/serve-vercel-build-output/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/fastly/serve-vercel-build-output/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/fastly/serve-vercel-build-output/releases/tag/v0.4.0
