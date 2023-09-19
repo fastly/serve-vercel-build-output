@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.5.0] - 2023-09-19
+
 ### Added
 
 - Patch server-side fetch() so that loopback requests are replaced with a call to serveRequest().
@@ -27,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[unreleased]: https://github.com/fastly/serve-vercel-build-output/compare/v0.4.1...HEAD
+[unreleased]: https://github.com/fastly/serve-vercel-build-output/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/fastly/serve-vercel-build-output/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/fastly/serve-vercel-build-output/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/fastly/serve-vercel-build-output/releases/tag/v0.4.0
