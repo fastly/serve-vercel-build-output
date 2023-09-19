@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+
+- Patch server-side fetch() so that loopback requests are replaced with a call to serveRequest().
+
 ### Updated
 
 - Position @fastly/js-compute as a devDependency and peerDependency.

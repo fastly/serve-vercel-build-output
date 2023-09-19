@@ -10,6 +10,8 @@ import { getLogger, ILogger } from "../logging/index.js";
 import EdgeMiddlewareStep from "../infrastructure/EdgeMiddlewareStep.js";
 import VercelExecLayer from "./layers/VercelExecLayer.js";
 import NextImageService from "../services/next-image.js";
+import { onBeforeFetch } from "../utils/patchFetch.js";
+import { getThreadLocal, setThreadLocal } from "../utils/thread-local-storage.js";
 
 export type ServerConfig = {
   backends: Backends | 'dynamic',
@@ -108,6 +110,54 @@ export default class VercelBuildOutputServer {
 
   public async initialize() {
 
+    // C@E services can't recursively call into themselves.
+    // Hook the fetch() that goes to self and replace with a call to serveRequest.
+    onBeforeFetch((_fetch, input, init) => {
+
+      const event = getThreadLocal<FetchEvent>('fetchEvent');
+      if (event == null) {
+        this._logger.warn(`fetch() -- getThreadLocal('fetchEvent') was null.`);
+        // Return null causes original fetch to be called
+        return null;
+      } else {
+        const eventRequestUrl = new URL(event.request.url);
+        const requestUrl = new URL(input instanceof Request ? input.url : input);
+        if (eventRequestUrl.host !== requestUrl.host) {
+          this._logger.warn(`fetch() -- fetch to host other than ${eventRequestUrl.host}.`);
+          return null;
+        }
+      }
+
+      this._logger.debug('fetch() -- detected call to self. Patching with call to serveRequest().');
+
+      const req = new Request(input instanceof Request ? input.clone() : input, init);
+      const client = event.client;
+
+      const ctxQueue: Promise<any>[] = [];
+
+      return (async() => {
+        const response = this.serveRequest(
+          req,
+          client,
+          {
+            waitUntil(promise) {
+              ctxQueue.push(promise);
+            },
+          }
+        );
+
+        this._logger.debug('fetch() -- returned from serveRequest().');
+        this._logger.debug(response);
+
+        while (ctxQueue.length > 0) {
+          await ctxQueue.shift();
+        }
+
+        return response;
+      })();
+
+    });
+
     for (const assetKey of this.moduleAssets.getAssetKeys()) {
       if (assetKey.startsWith('/init/')) {
         const initModule = this.moduleAssets.getAsset(assetKey);
@@ -128,6 +178,13 @@ export default class VercelBuildOutputServer {
   public createHandler() {
 
     return (event: FetchEvent) => {
+
+      if (getThreadLocal('fetchEvent') != null) {
+        throw new Error('Recursive call to handler created by VercelBuildOutputServer.createHandler() detected.');
+      }
+
+      setThreadLocal('fetchEvent', event);
+
       return this.serveRequest(
         event.request,
         event.client,
