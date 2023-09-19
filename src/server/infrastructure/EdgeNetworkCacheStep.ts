@@ -195,14 +195,13 @@ export default class EdgeNetworkCacheStep {
 
       let responseToReturn: Response | null;
 
-      // TODO: One day when response.clone() is implemented, use it
+      // TODO: One day when response#clone() is implemented, use it
       // response.body.tee doesn't seem to work well either =(
       const array = response.body != null ? await readableStreamToArray(response.body) : null;
 
-      // TODO: It seems that KVStore.prototype.put() doesn't seem to work with
+      // TODO: It seems that KVStore#put() doesn't seem to work with
       // user-provided ReadableStream, so we serialize it first
       let cacheSaveBody: BodyInit | null = array;
-
 
       // If returnResponse is false, then we don't need to return the
       // response to the caller, so we don't bother cloning it
