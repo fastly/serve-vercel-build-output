@@ -5,7 +5,7 @@ expand on this library.
 
 ## High level
 
-`@fastly/serve-vercel-build-output` is a runtime library for Fastly Compute@Edge, which aims to execute an application
+`@fastly/serve-vercel-build-output` is a runtime library for Fastly Compute, which aims to execute an application
 that conforms to [Vercel](https://vercel.com/)'s [Build Output API](https://vercel.com/docs/build-output-api/v3).
 
 There are some specific goals here:
@@ -20,11 +20,11 @@ There are some specific goals here:
 |-----------------------------------------------------------------------------------------------------|---------|---------------------------------------------------------------------------|
 | [Static Files](https://vercel.com/docs/build-output-api/v3/primitives#static-files)                 | Yes     | Similar to Vercel, all these files will be served from the Edge.          |
 | [Serverless Functions](https://vercel.com/docs/build-output-api/v3/primitives#serverless-functions) | No      | At the current time we do not directly support Serverless Functions. (*1) | 
-| [Edge Functions](https://vercel.com/docs/build-output-api/v3/primitives#edge-functions)             | Yes     | These are run against the Compute@Edge JavaScript runtime.                | 
+| [Edge Functions](https://vercel.com/docs/build-output-api/v3/primitives#edge-functions)             | Yes     | These are run against the Compute JavaScript runtime.                     | 
 | [Prerender Functions](https://vercel.com/docs/build-output-api/v3/primitives#prerender-functions)   | Yes     | These use the KV store to store the generated versions. (*2)              | 
 
 *1 - Next.js running with `runtime: "nodejs"` will normally compile to a Serverless function. `@fastly/next-compute-js`
-provides a replacement runtime to convert this into an Edge function so that it is possible to use with Compute@Edge.    
+provides a replacement runtime to convert this into an Edge function so that it is possible to use with Compute.    
 
 *2 - Vercel describes this as a "Serverless Function that will be cached by the Vercel Edge Network", but we support this
 using an Edge function.

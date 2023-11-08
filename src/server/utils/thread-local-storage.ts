@@ -8,7 +8,7 @@
 // This simulates "thread local" storage by allowing to save or retrieve an object
 // tagged by a string label.
 //
-// NOTE: This isn't a "real" implementation of Thread Local. However, Compute@Edge provides
+// NOTE: This isn't a "real" implementation of Thread Local. However, Compute provides
 // its own working space to each request, so everything here can be considered "local" to
 // the current "thread" of execution.
 

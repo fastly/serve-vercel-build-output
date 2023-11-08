@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Updated
+
+- Apply "Compute" branding change.
+
 ## [0.5.0] - 2023-09-19
 
 ### Added

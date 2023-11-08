@@ -1,4 +1,4 @@
-## Serve Vercel Build Output (v3) on Fastly Compute@Edge
+## Serve Vercel Build Output (v3) on Fastly Compute
 
 > NOTE: `@fastly/serve-vercel-build-output` is provided as a Fastly Labs product. Visit the [Fastly Labs](https://www.fastlylabs.com/) site for terms of use.
 
