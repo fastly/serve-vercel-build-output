@@ -136,7 +136,12 @@ export default class EdgeMiddlewareStep {
       response = this.serveUnknownResultType();
     }
 
-    return this.serveResponse(response, requestId, routerResult.headers);
+    return this.serveResponse(response, requestId,
+      {
+        ...routeMatcherContext.responseHeaders,
+        ...routerResult.headers
+      }
+    );
   }
 
   public async serveRouterError(
