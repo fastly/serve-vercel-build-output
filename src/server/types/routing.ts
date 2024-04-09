@@ -176,4 +176,4 @@ export type ServeRouterResultHandler =
   (routerResult: RouterPhaseResult, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<Response>;
 
 export type ServeRouterErrorHandler =
-  (status: number, errorCode: string | null, headers: HttpHeaders) => PromiseOrValue<Response>;
+  (status: number, errorCode: string | null, routeMatcherContext: RouteMatcherContext) => PromiseOrValue<Response>;

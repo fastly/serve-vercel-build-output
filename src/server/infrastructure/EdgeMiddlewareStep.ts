@@ -77,8 +77,8 @@ export default class EdgeMiddlewareStep {
       this.onMiddleware(requestContext, middlewarePath, routeMatcherContext);
     routeMatcher.onServeRouterResult = (routerResult, routeMatcherContext) =>
       this.serveRouterResult(requestContext, routerResult, routeMatcherContext);
-    routeMatcher.onServeRouterError = (status, errorCode, headers) =>
-      this.serveRouterError(requestContext, status, errorCode, headers)
+    routeMatcher.onServeRouterError = (status, errorCode, routeMatcherContext) =>
+      this.serveRouterError(requestContext, status, errorCode, routeMatcherContext)
 
     this._logger.info('calling router');
     const response = await routeMatcher.doRouter(request);
@@ -148,7 +148,7 @@ export default class EdgeMiddlewareStep {
     requestContext: RequestContext,
     status: number,
     errorCode: string | null = null,
-    headers: HttpHeaders = {},
+    routeMatcherContext: RouteMatcherContext,
   ) {
 
     const { request, requestId } = requestContext;
@@ -160,7 +160,7 @@ export default class EdgeMiddlewareStep {
       errorCode,
     );
 
-    return this.serveResponse(response, requestId, headers);
+    return this.serveResponse(response, requestId, routeMatcherContext.responseHeaders);
 
   }
 

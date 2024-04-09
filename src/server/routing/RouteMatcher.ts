@@ -89,12 +89,12 @@ export default class RouteMatcher {
   async serveRouterError(
     status: number,
     errorCode: string | null = null,
-    headers: HttpHeaders = {},
+    routeMatcherContext: RouteMatcherContext,
   ) {
     if (this.onServeRouterError == null) {
       throw new Error('Unexpected! onServeRouterError not set.');
     }
-    return this.onServeRouterError(status, errorCode, headers);
+    return this.onServeRouterError(status, errorCode, routeMatcherContext);
   }
 
   async doRouter(request: Request): Promise<Response> {
@@ -170,7 +170,7 @@ export default class RouteMatcher {
       }
 
       if (applyRouteResult.type === 'error') {
-        return await this.serveRouterError(500, null, routeMatcherContext.responseHeaders);
+        return await this.serveRouterError(500, null, routeMatcherContext);
       }
 
     }
@@ -178,7 +178,7 @@ export default class RouteMatcher {
     this._logger.debug('did not match an error phase route');
     this._logger.debug('errorRouteResult', JSON.stringify(errorRouteResult, null, 2));
 
-    return await this.serveRouterError(errorRouteResult.status ?? 404, errorRouteResult.errorCode, routeMatcherContext.responseHeaders);
+    return await this.serveRouterError(errorRouteResult.status ?? 404, errorRouteResult.errorCode, routeMatcherContext);
   }
 
   async doRouterPhase(phase: PhaseName, routeMatcherContext: RouteMatcherContext): Promise<RouterPhaseResult> {
