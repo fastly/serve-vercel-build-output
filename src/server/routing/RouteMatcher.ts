@@ -170,7 +170,7 @@ export default class RouteMatcher {
       }
 
       if (applyRouteResult.type === 'error') {
-        return await this.serveRouterError(500, null, routeMatcherContext.headers);
+        return await this.serveRouterError(500, null, routeMatcherContext.responseHeaders);
       }
 
     }
@@ -178,7 +178,7 @@ export default class RouteMatcher {
     this._logger.debug('did not match an error phase route');
     this._logger.debug('errorRouteResult', JSON.stringify(errorRouteResult, null, 2));
 
-    return await this.serveRouterError(errorRouteResult.status ?? 404, errorRouteResult.errorCode, routeMatcherContext.headers);
+    return await this.serveRouterError(errorRouteResult.status ?? 404, errorRouteResult.errorCode, routeMatcherContext.responseHeaders);
   }
 
   async doRouterPhase(phase: PhaseName, routeMatcherContext: RouteMatcherContext): Promise<RouterPhaseResult> {
