@@ -63,9 +63,17 @@ export default class EdgeMiddlewareStep {
 
     const { request } = requestContext;
 
-    this._logger.debug('requestContext', {
-      requestContext
-    });
+    try {
+      this._logger.debug('requestContext', {
+        requestContext
+      });
+    } catch {
+      const obj: Partial<typeof requestContext> = { ...requestContext };
+      delete obj.client;
+      this._logger.debug('requestContext', {
+        requestContext: obj,
+      });
+    }
 
     const routeMatcher = new RouteMatcher(
       this._routesCollection,
